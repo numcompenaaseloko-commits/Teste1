@@ -1,7 +1,6 @@
 --[[
-    Snow Hub - COMPLETE - Advanced Aimbot & ESP Script for Roblox
-    TODAS as funcionalidades implementadas e otimizadas
-    Compatível com loadstring e todos os executors
+    Snow Hub - Complete Aimbot & ESP Script
+    Todas as funcionalidades implementadas
 ]]
 
 -- Prevenção de múltiplas execuções
@@ -10,15 +9,6 @@ if getgenv().SnowHubLoaded then
     return
 end
 getgenv().SnowHubLoaded = true
-
--- Tratamento de erros global
-local function safeCall(func, ...)
-    local success, result = pcall(func, ...)
-    if not success then
-        warn("❄ Snow Hub Error: " .. tostring(result))
-    end
-    return result
-end
 
 -- Services
 local Players = game:GetService("Players")
@@ -29,13 +19,7 @@ local HttpService = game:GetService("HttpService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
-if not LocalPlayer or not Camera then
-    warn("❄ Snow Hub: Falha ao carregar serviços essenciais!")
-    getgenv().SnowHubLoaded = false
-    return
-end
-
--- Settings com TODAS as opções
+-- Settings
 local Settings = {
     Aimbot = {
         Enabled = false,
@@ -43,7 +27,6 @@ local Settings = {
         ShowFOV = true,
         FOVColor = Color3.fromRGB(255, 255, 255),
         FOVThickness = 2,
-        Smoothness = 0.3,
     },
     ESP = {
         Enabled = false,
@@ -52,26 +35,21 @@ local Settings = {
         Names = true,
         Distance = true,
         Color = Color3.fromRGB(0, 255, 0),
-        MaxDistance = 500,
     }
 }
 
--- Sistema de Save/Load
+-- Save/Load
 local function saveSettings()
-    safeCall(function()
-        local data = HttpService:JSONEncode(Settings)
-        pcall(function()
-            setclipboard(data)
-            if writefile then
-                writefile("SnowHub_Settings.json", data)
-            end
-        end)
-        print("❄ Configurações salvas!")
+    local data = HttpService:JSONEncode(Settings)
+    pcall(function()
+        setclipboard(data)
+        if writefile then writefile("SnowHub_Settings.json", data) end
     end)
+    print("❄ Configurações salvas!")
 end
 
 local function loadSettings()
-    safeCall(function()
+    pcall(function()
         if isfile and isfile("SnowHub_Settings.json") then
             local data = readfile("SnowHub_Settings.json")
             local loaded = HttpService:JSONDecode(data)
@@ -90,7 +68,6 @@ ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 ScreenGui.ResetOnSpawn = false
 
 local MainFrame = Instance.new("Frame")
-MainFrame.Name = "MainFrame"
 MainFrame.Size = UDim2.new(0, 350, 0, 450)
 MainFrame.Position = UDim2.new(0.5, -175, 0.5, -225)
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
@@ -117,7 +94,7 @@ Stroke.Transparency = 0.8
 Stroke.Thickness = 1
 Stroke.Parent = MainFrame
 
--- Title Bar (Draggable)
+-- Title Bar
 local TitleBar = Instance.new("Frame")
 TitleBar.Size = UDim2.new(1, 0, 0, 35)
 TitleBar.BackgroundTransparency = 1
@@ -301,7 +278,7 @@ UserInputService.InputEnded:Connect(function(input)
     end
 end)
 
--- Show FOV Toggle
+-- Show FOV
 local fovToggleY = aimbotY + 50
 local showFOVBtn = Instance.new("TextButton")
 showFOVBtn.Size = UDim2.new(0, 100, 0, 25)
@@ -599,4 +576,17 @@ local function updateESP()
                     local box = Instance.new("Frame")
                     box.Size = UDim2.new(0, 40, 0, 80)
                     box.Position = UDim2.new(0, position.X - 20, 0, position.Y - 40)
-     
+                    box.BackgroundTransparency = 0.5
+                    box.BackgroundColor3 = Settings.ESP.Color
+                    box.BorderSizePixel = 1
+                    box.BorderColor3 = Settings.ESP.Color
+                    box.Parent = ScreenGui
+                    table.insert(espObjects, box)
+                end
+                
+                -- Tracers
+                if Settings.ESP.Tracers then
+                    local tracer = Instance.new("Frame")
+                    local startPos = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
+                    local endPos = Vector2.new(position.X, position.Y)
+                    local dist = (endP
