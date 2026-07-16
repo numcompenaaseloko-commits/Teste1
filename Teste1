@@ -1,32 +1,12 @@
 --[[
-    Script: Snow Premium PvP Hub v6.0
-    Versão: Compatível com loadstring
-    Instruções: loadstring(game:HttpGet("URL_DO_SCRIPT"))()
+    Script: Snow Premium PvP Hub v7.0
+    Descrição: Com FOV Circle visível e ajustável
+    Compatível com loadstring
 ]]
 
--- Verificação de execução via loadstring
-if not game:IsLoaded() then
-    game.Loaded:Wait()
-end
+-- Verificação de execução
+if not game:IsLoaded() then game.Loaded:Wait() end
 
--- ========== SISTEMA DE PROTEÇÃO ==========
-local function ValidateExecution()
-    local success, err = pcall(function()
-        local _ = game:GetService("Players").LocalPlayer
-    end)
-    
-    if not success then
-        warn("❌ Erro ao executar script! Certifique-se de estar em um jogo.")
-        return false
-    end
-    return true
-end
-
-if not ValidateExecution() then
-    return
-end
-
--- ========== VARIÁVEIS GLOBAIS ==========
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
@@ -37,9 +17,7 @@ local Mouse = LocalPlayer:GetMouse()
 
 -- Aguardar Character
 local function WaitForCharacter()
-    while not LocalPlayer.Character do
-        task.wait(0.1)
-    end
+    while not LocalPlayer.Character do task.wait(0.1) end
     return LocalPlayer.Character
 end
 WaitForCharacter()
@@ -50,11 +28,12 @@ ScreenGui.Name = "SnowPvPHub"
 ScreenGui.Parent = LocalPlayer:FindFirstChild("PlayerGui") or LocalPlayer:WaitForChild("PlayerGui")
 ScreenGui.ResetOnSpawn = false
 
--- ========== VARIÁVEIS DO HUB ==========
+-- ========== VARIÁVEIS ==========
 local hubVisible = false
 local currentTarget = nil
 local targetLocked = false
 local FOV = 500
+local showFOV = true
 
 local PvPFunctions = {
     Aimbot = false,
@@ -67,8 +46,49 @@ local PvPFunctions = {
     ESPDistance = false,
     NoRecoil = false,
     NoSpread = false,
-    AutoShoot = false
+    AutoShoot = false,
+    ShowFOV = true
 }
+
+-- ========== FOV CIRCLE (BOLA NO CENTRO DA TELA) ==========
+local FOVCircle = Instance.new("Frame")
+FOVCircle.Name = "FOVCircle"
+FOVCircle.Size = UDim2.new(0, FOV, 0, FOV)
+FOVCircle.Position = UDim2.new(0.5, -FOV/2, 0.5, -FOV/2)
+FOVCircle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+FOVCircle.BackgroundTransparency = 0.85
+FOVCircle.BorderSizePixel = 2
+FOVCircle.BorderColor3 = Color3.fromRGB(0, 200, 255)
+FOVCircle.ClipsDescendants = true
+FOVCircle.ZIndex = 999
+FOVCircle.Parent = ScreenGui
+
+-- Ponto central (cruz/mira)
+local CenterDot = Instance.new("Frame")
+CenterDot.Size = UDim2.new(0, 4, 0, 4)
+CenterDot.Position = UDim2.new(0.5, -2, 0.5, -2)
+CenterDot.BackgroundColor3 = Color3.fromRGB(0, 200, 255)
+CenterDot.BorderSizePixel = 0
+CenterDot.ZIndex = 1000
+CenterDot.Parent = FOVCircle
+
+-- Linhas da mira (opcional)
+local function CreateCrosshair()
+    local cross = Instance.new("Frame")
+    cross.Size = UDim2.new(0, 20, 0, 2)
+    cross.Position = UDim2.new(0.5, -10, 0.5, -1)
+    cross.BackgroundColor3 = Color3.fromRGB(0, 200, 255)
+    cross.BackgroundTransparency = 0.3
+    cross.BorderSizePixel = 0
+    cross.ZIndex = 1000
+    cross.Parent = FOVCircle
+    
+    local cross2 = cross:Clone()
+    cross2.Size = UDim2.new(0, 2, 0, 20)
+    cross2.Position = UDim2.new(0.5, -1, 0.5, -10)
+    cross2.Parent = FOVCircle
+end
+CreateCrosshair()
 
 -- ========== ÍCONE SNOW ==========
 local SnowIcon = Instance.new("TextButton")
@@ -86,7 +106,6 @@ SnowIcon.BorderSizePixel = 2
 SnowIcon.BorderColor3 = Color3.fromRGB(80, 160, 255)
 SnowIcon.Parent = ScreenGui
 
--- Glow do ícone
 local IconGlow = Instance.new("Frame")
 IconGlow.Size = UDim2.new(1, 10, 1, 10)
 IconGlow.Position = UDim2.new(0, -5, 0, -5)
@@ -99,7 +118,7 @@ IconGlow.Parent = SnowIcon
 -- ========== HUB PRINCIPAL ==========
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 340, 0, 450)
+MainFrame.Size = UDim2.new(0, 340, 0, 500)
 MainFrame.Position = UDim2.new(0, 70, 0, 10)
 MainFrame.BackgroundColor3 = Color3.fromRGB(10, 15, 30)
 MainFrame.BackgroundTransparency = 0.05
@@ -109,7 +128,6 @@ MainFrame.ClipsDescendants = true
 MainFrame.Visible = false
 MainFrame.Parent = ScreenGui
 
--- Gradiente
 local GradientBG = Instance.new("UIGradient")
 GradientBG.Color = ColorSequence.new({
     ColorSequenceKeypoint.new(0, Color3.fromRGB(10, 15, 30)),
@@ -137,7 +155,6 @@ Title.TextScaled = true
 Title.Font = Enum.Font.GothamBold
 Title.Parent = TitleFrame
 
--- Botão Fechar
 local CloseBtn = Instance.new("TextButton")
 CloseBtn.Size = UDim2.new(0, 25, 0, 25)
 CloseBtn.Position = UDim2.new(1, -30, 0, 5)
@@ -157,7 +174,7 @@ ScrollFrame.Size = UDim2.new(1, -10, 1, -45)
 ScrollFrame.Position = UDim2.new(0, 5, 0, 40)
 ScrollFrame.BackgroundTransparency = 1
 ScrollFrame.BorderSizePixel = 0
-ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 700)
+ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 800)
 ScrollFrame.ScrollBarThickness = 5
 ScrollFrame.ScrollBarImageColor3 = Color3.fromRGB(80, 160, 255)
 ScrollFrame.Parent = MainFrame
@@ -257,45 +274,131 @@ local autoSpinToggle = CreateToggle("🔄 Auto Spin", false, function(s)
     PvPFunctions.AutoSpin = s 
 end)
 
--- FOV Slider
-local fovFrame = Instance.new("Frame")
-fovFrame.Size = UDim2.new(1, -5, 0, 30)
-fovFrame.BackgroundColor3 = Color3.fromRGB(35, 45, 70)
-fovFrame.BackgroundTransparency = 0.5
-fovFrame.BorderSizePixel = 1
-fovFrame.BorderColor3 = Color3.fromRGB(60, 100, 180)
-fovFrame.Parent = ScrollFrame
+-- FOV Settings
+CreateSection("FOV CONFIG")
 
-local fovLabel = Instance.new("TextLabel")
-fovLabel.Size = UDim2.new(0.4, 0, 1, 0)
-fovLabel.Position = UDim2.new(0, 8, 0, 0)
-fovLabel.BackgroundTransparency = 1
-fovLabel.Text = "🎯 FOV: 500"
-fovLabel.TextColor3 = Color3.fromRGB(210, 220, 255)
-fovLabel.TextXAlignment = Enum.TextXAlignment.Left
-fovLabel.Font = Enum.Font.Gotham
-fovLabel.TextSize = 13
-fovLabel.Parent = fovFrame
-
-local fovSlider = Instance.new("TextButton")
-fovSlider.Size = UDim2.new(0, 60, 0, 20)
-fovSlider.Position = UDim2.new(1, -65, 0.5, -10)
-fovSlider.BackgroundColor3 = Color3.fromRGB(60, 100, 180)
-fovSlider.Text = "500"
-fovSlider.TextColor3 = Color3.fromRGB(255, 255, 255)
-fovSlider.Font = Enum.Font.GothamBold
-fovSlider.TextSize = 11
-fovSlider.BorderSizePixel = 0
-fovSlider.Parent = fovFrame
-
-fovSlider.MouseButton1Click:Connect(function()
-    local values = {100, 200, 300, 400, 500, 600, 700, 800, 900, 1000}
-    local currentIndex = table.find(values, FOV) or 5
-    currentIndex = currentIndex % #values + 1
-    FOV = values[currentIndex]
-    fovLabel.Text = "🎯 FOV: " .. FOV
-    fovSlider.Text = tostring(FOV)
+-- Toggle FOV
+local fovToggle = CreateToggle("🔵 Mostrar FOV", true, function(s)
+    PvPFunctions.ShowFOV = s
+    FOVCircle.Visible = s
 end)
+
+-- FOV Size Slider (com valores)
+local fovSizeFrame = Instance.new("Frame")
+fovSizeFrame.Size = UDim2.new(1, -5, 0, 35)
+fovSizeFrame.BackgroundColor3 = Color3.fromRGB(35, 45, 70)
+fovSizeFrame.BackgroundTransparency = 0.5
+fovSizeFrame.BorderSizePixel = 1
+fovSizeFrame.BorderColor3 = Color3.fromRGB(60, 100, 180)
+fovSizeFrame.Parent = ScrollFrame
+
+local fovSizeLabel = Instance.new("TextLabel")
+fovSizeLabel.Size = UDim2.new(0.5, 0, 1, 0)
+fovSizeLabel.Position = UDim2.new(0, 8, 0, 0)
+fovSizeLabel.BackgroundTransparency = 1
+fovSizeLabel.Text = "📏 Tamanho FOV: 500"
+fovSizeLabel.TextColor3 = Color3.fromRGB(210, 220, 255)
+fovSizeLabel.TextXAlignment = Enum.TextXAlignment.Left
+fovSizeLabel.Font = Enum.Font.Gotham
+fovSizeLabel.TextSize = 13
+fovSizeLabel.Parent = fovSizeFrame
+
+-- Botões + e - para ajustar FOV
+local fovMinus = Instance.new("TextButton")
+fovMinus.Size = UDim2.new(0, 30, 0, 25)
+fovMinus.Position = UDim2.new(1, -80, 0.5, -12.5)
+fovMinus.BackgroundColor3 = Color3.fromRGB(60, 100, 180)
+fovMinus.Text = "−"
+fovMinus.TextColor3 = Color3.fromRGB(255, 255, 255)
+fovMinus.TextSize = 18
+fovMinus.Font = Enum.Font.GothamBold
+fovMinus.BorderSizePixel = 0
+fovMinus.Parent = fovSizeFrame
+
+local fovValueDisplay = Instance.new("TextLabel")
+fovValueDisplay.Size = UDim2.new(0, 40, 0, 25)
+fovValueDisplay.Position = UDim2.new(1, -45, 0.5, -12.5)
+fovValueDisplay.BackgroundTransparency = 1
+fovValueDisplay.Text = "500"
+fovValueDisplay.TextColor3 = Color3.fromRGB(255, 255, 255)
+fovValueDisplay.TextSize = 14
+fovValueDisplay.Font = Enum.Font.GothamBold
+fovValueDisplay.Parent = fovSizeFrame
+
+local fovPlus = Instance.new("TextButton")
+fovPlus.Size = UDim2.new(0, 30, 0, 25)
+fovPlus.Position = UDim2.new(1, -115, 0.5, -12.5)
+fovPlus.BackgroundColor3 = Color3.fromRGB(60, 100, 180)
+fovPlus.Text = "+"
+fovPlus.TextColor3 = Color3.fromRGB(255, 255, 255)
+fovPlus.TextSize = 18
+fovPlus.Font = Enum.Font.GothamBold
+fovPlus.BorderSizePixel = 0
+fovPlus.Parent = fovSizeFrame
+
+-- Função para atualizar FOV
+local function UpdateFOVSize(newFOV)
+    FOV = math.clamp(newFOV, 50, 1500)
+    fovSizeLabel.Text = "📏 Tamanho FOV: " .. FOV
+    fovValueDisplay.Text = tostring(FOV)
+    
+    -- Atualizar o círculo
+    FOVCircle.Size = UDim2.new(0, FOV, 0, FOV)
+    FOVCircle.Position = UDim2.new(0.5, -FOV/2, 0.5, -FOV/2)
+    
+    -- Atualizar o tamanho da borda proporcionalmente
+    FOVCircle.BorderSizePixel = math.max(1, math.floor(FOV / 100))
+end
+
+fovMinus.MouseButton1Click:Connect(function()
+    UpdateFOVSize(FOV - 50)
+end)
+
+fovPlus.MouseButton1Click:Connect(function()
+    UpdateFOVSize(FOV + 50)
+end)
+
+-- FOV Presets rápidos
+local presetFrame = Instance.new("Frame")
+presetFrame.Size = UDim2.new(1, -5, 0, 30)
+presetFrame.BackgroundColor3 = Color3.fromRGB(35, 45, 70)
+presetFrame.BackgroundTransparency = 0.5
+presetFrame.BorderSizePixel = 1
+presetFrame.BorderColor3 = Color3.fromRGB(60, 100, 180)
+presetFrame.Parent = ScrollFrame
+
+local presetLabel = Instance.new("TextLabel")
+presetLabel.Size = UDim2.new(0.3, 0, 1, 0)
+presetLabel.Position = UDim2.new(0, 8, 0, 0)
+presetLabel.BackgroundTransparency = 1
+presetLabel.Text = "⚡ Presets:"
+presetLabel.TextColor3 = Color3.fromRGB(210, 220, 255)
+presetLabel.TextXAlignment = Enum.TextXAlignment.Left
+presetLabel.Font = Enum.Font.Gotham
+presetLabel.TextSize = 12
+presetLabel.Parent = presetFrame
+
+local presets = {100, 300, 500, 800, 1000}
+local presetButtons = {}
+
+for i, val in ipairs(presets) do
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0, 35, 0, 20)
+    btn.Position = UDim2.new(0.35 + (i-1) * 0.13, 0, 0.5, -10)
+    btn.BackgroundColor3 = Color3.fromRGB(60, 100, 180)
+    btn.Text = tostring(val)
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.TextSize = 10
+    btn.Font = Enum.Font.GothamBold
+    btn.BorderSizePixel = 0
+    btn.Parent = presetFrame
+    
+    btn.MouseButton1Click:Connect(function()
+        UpdateFOVSize(val)
+    end)
+    
+    presetButtons[i] = btn
+end
 
 CreateSection("ESP")
 
@@ -332,16 +435,16 @@ end)
 local function OpenHub()
     hubVisible = true
     MainFrame.Visible = true
-    MainFrame.Size = UDim2.new(0, 0, 0, 450)
+    MainFrame.Size = UDim2.new(0, 0, 0, 500)
     local tween = TweenService:Create(MainFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-        Size = UDim2.new(0, 340, 0, 450)
+        Size = UDim2.new(0, 340, 0, 500)
     })
     tween:Play()
 end
 
 local function CloseHub()
     local tween = TweenService:Create(MainFrame, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-        Size = UDim2.new(0, 0, 0, 450)
+        Size = UDim2.new(0, 0, 0, 500)
     })
     tween:Play()
     task.wait(0.2)
@@ -415,7 +518,6 @@ local function IsTargetValid(target)
     return true
 end
 
--- Loop principal do aimbot
 RunService.RenderStepped:Connect(function()
     local aimbotEnabled = PvPFunctions.Aimbot
     local aimlockEnabled = PvPFunctions.Aimlock
@@ -486,7 +588,6 @@ local function CreateESP(player)
     local head = char:FindFirstChild("Head")
     if not head then return end
     
-    -- Box ESP
     if PvPFunctions.ESPBox then
         local box = Instance.new("BoxHandleAdornment")
         box.Size = Vector3.new(2.5, 4.5, 1)
@@ -498,7 +599,6 @@ local function CreateESP(player)
         table.insert(espList, box)
     end
     
-    -- Health ESP
     if PvPFunctions.ESPHealth then
         local bgui = Instance.new("BillboardGui")
         bgui.Size = UDim2.new(0, 35, 0, 5)
@@ -519,96 +619,4 @@ local function CreateESP(player)
         local humanoid = char:FindFirstChild("Humanoid")
         if humanoid then
             humanoid:GetPropertyChangedSignal("Health"):Connect(function()
-                bar.Size = UDim2.new(humanoid.Health / humanoid.MaxHealth, 0, 1, 0)
-            end)
-        end
-        
-        table.insert(espList, bgui)
-    end
-    
-    -- Name ESP
-    if PvPFunctions.ESPName then
-        local bgui = Instance.new("BillboardGui")
-        bgui.Size = UDim2.new(0, 70, 0, 18)
-        bgui.Adornee = head
-        bgui.Parent = char
-        
-        local label = Instance.new("TextLabel")
-        label.Size = UDim2.new(1, 0, 1, 0)
-        label.BackgroundTransparency = 1
-        label.Text = player.Name
-        label.TextColor3 = Color3.fromRGB(255, 255, 255)
-        label.TextScaled = true
-        label.Font = Enum.Font.GothamBold
-        label.Parent = bgui
-        
-        table.insert(espList, bgui)
-    end
-    
-    espObjects[player] = espList
-end
-
-function UpdateESP()
-    for player, list in pairs(espObjects) do
-        if list then
-            for _, obj in pairs(list) do 
-                pcall(function() obj:Destroy() end)
-            end
-            espObjects[player] = nil
-        end
-    end
-    
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer then
-            pcall(function() CreateESP(player) end)
-        end
-    end
-end
-
--- Conectar eventos
-Players.PlayerAdded:Connect(function(player)
-    player.CharacterAdded:Connect(function()
-        task.wait(0.5)
-        pcall(function() CreateESP(player) end)
-    end)
-end)
-
-for _, player in pairs(Players:GetPlayers()) do
-    if player ~= LocalPlayer then
-        player.CharacterAdded:Connect(function()
-            task.wait(0.5)
-            pcall(function() CreateESP(player) end)
-        end)
-        task.wait(0.5)
-        pcall(function() CreateESP(player) end)
-    end
-end
-
--- ========== ANIMAÇÃO DO ÍCONE ==========
-coroutine.wrap(function()
-    while SnowIcon and SnowIcon.Parent do
-        for i = 1, 30 do
-            task.wait(0.05)
-            pcall(function()
-                IconGlow.BackgroundTransparency = 0.8 + math.sin(i * 0.2) * 0.15
-                IconGlow.BorderColor3 = Color3.fromRGB(
-                    150 + math.sin(i * 0.2) * 50,
-                    200 + math.sin(i * 0.25) * 50,
-                    255 + math.sin(i * 0.15) * 50
-                )
-            end)
-        end
-    end
-end)()
-
--- ========== MENSAGEM FINAL ==========
-print("❄️ Snow Premium PvP Hub v6.0 Carregado!")
-print("📌 Clique no ícone SNOW no canto superior esquerdo!")
-print("✅ Compatível com loadstring!")
-
--- ========== FUNÇÃO PARA LOADSTRING ==========
-return {
-    Version = "6.0",
-    Status = "Loaded",
-    Functions = PvPFunctions
-}
+                bar.Size = UDim2.new(huma
