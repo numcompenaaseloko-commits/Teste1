@@ -1,44 +1,20 @@
 --[[
-    SNOW PVP HUB v14 - VERSÃO COMPLETA
-    Baseado no teste que funcionou
-    Todas as funcionalidades premium
+    SNOW PVP HUB v15 - BASEADO NO TESTE QUE FUNCIONOU
 ]]
 
 repeat task.wait() until game:IsLoaded()
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
 local Camera = workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 repeat task.wait() until LocalPlayer and LocalPlayer.Character
 
-print("❄️ Snow PvP Hub v14 Carregando...")
+print("❄️ Snow Hub v15 Carregando...")
 
--- ========== VARIÁVEIS ==========
-local FOV = 500
-local currentTarget = nil
-local targetLocked = false
-local Mouse = LocalPlayer:GetMouse()
-repeat task.wait() until Mouse
-
-local functions = {
-    Aimbot = false,
-    Aimlock = false,
-    SilentAim = false,
-    AutoSpin = false,
-    ESPBox = false,
-    ESPHealth = false,
-    ESPName = false,
-    ShowFOV = true,
-    NoRecoil = false,
-    NoSpread = false,
-    AutoShoot = false
-}
-
--- ========== CRIAR GUI ==========
+-- ========== CRIAR GUI (MESMO DO TESTE) ==========
 local gui = Instance.new("ScreenGui")
-gui.Name = "SnowPvPHub"
+gui.Name = "SnowHub"
 
 local function findParent()
     local p = LocalPlayer:FindFirstChild("PlayerGui")
@@ -49,6 +25,23 @@ local function findParent()
     return p
 end
 gui.Parent = findParent()
+
+print("✅ GUI criada!")
+
+-- ========== VARIÁVEIS ==========
+local Mouse = LocalPlayer:GetMouse()
+repeat task.wait() until Mouse
+
+local FOV = 500
+local currentTarget = nil
+local targetLocked = false
+
+local functions = {
+    Aimbot = false,
+    Aimlock = false,
+    ESP = false,
+    ShowFOV = true
+}
 
 -- ========== FOV CIRCLE ==========
 local fovCircle = Instance.new("Frame")
@@ -61,7 +54,6 @@ fovCircle.BorderColor3 = Color3.fromRGB(0, 200, 255)
 fovCircle.ZIndex = 999
 fovCircle.Parent = gui
 
--- Ponto central
 local dot = Instance.new("Frame")
 dot.Size = UDim2.new(0, 5, 0, 5)
 dot.Position = UDim2.new(0.5, -2.5, 0.5, -2.5)
@@ -70,26 +62,7 @@ dot.BorderSizePixel = 0
 dot.ZIndex = 1000
 dot.Parent = fovCircle
 
--- Cruz
-local crossH = Instance.new("Frame")
-crossH.Size = UDim2.new(0, 25, 0, 2)
-crossH.Position = UDim2.new(0.5, -12.5, 0.5, -1)
-crossH.BackgroundColor3 = Color3.fromRGB(0, 200, 255)
-crossH.BackgroundTransparency = 0.4
-crossH.BorderSizePixel = 0
-crossH.ZIndex = 1000
-crossH.Parent = fovCircle
-
-local crossV = Instance.new("Frame")
-crossV.Size = UDim2.new(0, 2, 0, 25)
-crossV.Position = UDim2.new(0.5, -1, 0.5, -12.5)
-crossV.BackgroundColor3 = Color3.fromRGB(0, 200, 255)
-crossV.BackgroundTransparency = 0.4
-crossV.BorderSizePixel = 0
-crossV.ZIndex = 1000
-crossV.Parent = fovCircle
-
--- ========== ÍCONE SNOW ==========
+-- ========== BOTÃO SNOW (IGUAL AO TESTE) ==========
 local icon = Instance.new("TextButton")
 icon.Size = UDim2.new(0, 60, 0, 60)
 icon.Position = UDim2.new(0, 10, 0, 10)
@@ -103,59 +76,30 @@ icon.BorderSizePixel = 3
 icon.BorderColor3 = Color3.fromRGB(100, 200, 255)
 icon.Parent = gui
 
--- Brilho do ícone
-local iconGlow = Instance.new("Frame")
-iconGlow.Size = UDim2.new(1, 15, 1, 15)
-iconGlow.Position = UDim2.new(0, -7.5, 0, -7.5)
-iconGlow.BackgroundColor3 = Color3.fromRGB(80, 160, 255)
-iconGlow.BackgroundTransparency = 0.85
-iconGlow.BorderSizePixel = 2
-iconGlow.BorderColor3 = Color3.fromRGB(150, 200, 255)
-iconGlow.Parent = icon
-
--- ========== HUB PRINCIPAL ==========
+-- ========== HUB (IGUAL AO TESTE) ==========
 local hub = Instance.new("Frame")
-hub.Size = UDim2.new(0, 380, 0, 500)
-hub.Position = UDim2.new(0, 80, 0, 10)
+hub.Size = UDim2.new(0, 350, 0, 400)
+hub.Position = UDim2.new(0.5, -175, 0.5, -200)
 hub.BackgroundColor3 = Color3.fromRGB(10, 10, 40)
 hub.BackgroundTransparency = 0.05
 hub.BorderSizePixel = 2
 hub.BorderColor3 = Color3.fromRGB(80, 160, 255)
-hub.ClipsDescendants = true
 hub.Visible = false
 hub.Parent = gui
 
--- Fundo gradiente
-local hubBG = Instance.new("UIGradient")
-hubBG.Color = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(10, 10, 40)),
-    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(25, 35, 70)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(10, 10, 40))
-})
-hubBG.Rotation = 90
-hubBG.Parent = hub
-
--- Título
-local title = Instance.new("Frame")
-title.Size = UDim2.new(1, 0, 0, 45)
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 40)
 title.BackgroundColor3 = Color3.fromRGB(30, 60, 120)
 title.BackgroundTransparency = 0.3
-title.BorderSizePixel = 0
+title.Text = "❄️ SNOW PVP ❄️"
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.TextScaled = true
+title.Font = Enum.Font.GothamBold
 title.Parent = hub
 
-local titleText = Instance.new("TextLabel")
-titleText.Size = UDim2.new(1, 0, 1, 0)
-titleText.BackgroundTransparency = 1
-titleText.Text = "❄️ SNOW PVP HUB v14 ❄️"
-titleText.TextColor3 = Color3.fromRGB(255, 255, 255)
-titleText.TextScaled = true
-titleText.Font = Enum.Font.GothamBold
-titleText.Parent = title
-
--- Botão Fechar
 local close = Instance.new("TextButton")
 close.Size = UDim2.new(0, 30, 0, 30)
-close.Position = UDim2.new(1, -35, 0, 8)
+close.Position = UDim2.new(1, -35, 0, 5)
 close.BackgroundColor3 = Color3.fromRGB(200, 30, 30)
 close.BackgroundTransparency = 0.2
 close.Text = "✕"
@@ -166,13 +110,13 @@ close.BorderSizePixel = 1
 close.BorderColor3 = Color3.fromRGB(255, 100, 100)
 close.Parent = title
 
--- ========== SCROLL FRAME ==========
+-- ========== SCROLL ==========
 local scroll = Instance.new("ScrollingFrame")
-scroll.Size = UDim2.new(1, -10, 1, -55)
-scroll.Position = UDim2.new(0, 5, 0, 50)
+scroll.Size = UDim2.new(1, -10, 1, -50)
+scroll.Position = UDim2.new(0, 5, 0, 45)
 scroll.BackgroundTransparency = 1
 scroll.BorderSizePixel = 0
-scroll.CanvasSize = UDim2.new(0, 0, 0, 900)
+scroll.CanvasSize = UDim2.new(0, 0, 0, 400)
 scroll.ScrollBarThickness = 5
 scroll.ScrollBarImageColor3 = Color3.fromRGB(80, 160, 255)
 scroll.Parent = hub
@@ -184,257 +128,112 @@ layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 layout.SortOrder = Enum.SortOrder.LayoutOrder
 layout.Parent = scroll
 
--- ========== FUNÇÕES DE CRIAÇÃO ==========
-local function createSection(text)
-    local section = Instance.new("Frame")
-    section.Size = UDim2.new(1, -5, 0, 28)
-    section.BackgroundColor3 = Color3.fromRGB(50, 70, 130)
-    section.BackgroundTransparency = 0.4
-    section.BorderSizePixel = 0
-    section.Parent = scroll
+-- ========== FUNÇÃO PARA CRIAR BOTÕES (IGUAL AO TESTE) ==========
+local function makeBtn(text, color, callback)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0.9, 0, 0, 40)
+    btn.BackgroundColor3 = color or Color3.fromRGB(40, 50, 90)
+    btn.BackgroundTransparency = 0.3
+    btn.Text = text
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.TextSize = 15
+    btn.Font = Enum.Font.GothamBold
+    btn.BorderSizePixel = 1
+    btn.BorderColor3 = Color3.fromRGB(80, 120, 200)
+    btn.Parent = scroll
     
-    local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, 0, 1, 0)
-    label.BackgroundTransparency = 1
-    label.Text = "✦ " .. text .. " ✦"
-    label.TextColor3 = Color3.fromRGB(180, 210, 255)
-    label.TextScaled = true
-    label.Font = Enum.Font.GothamSemibold
-    label.Parent = section
-end
-
-local function createToggle(text, default, callback)
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1, -5, 0, 32)
-    frame.BackgroundColor3 = Color3.fromRGB(35, 45, 80)
-    frame.BackgroundTransparency = 0.4
-    frame.BorderSizePixel = 1
-    frame.BorderColor3 = Color3.fromRGB(60, 100, 180)
-    frame.Parent = scroll
-    
-    local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(0.6, 0, 1, 0)
-    label.Position = UDim2.new(0, 10, 0, 0)
-    label.BackgroundTransparency = 1
-    label.Text = text
-    label.TextColor3 = Color3.fromRGB(210, 220, 255)
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    label.Font = Enum.Font.Gotham
-    label.TextSize = 14
-    label.Parent = frame
-    
-    local toggle = Instance.new("TextButton")
-    toggle.Size = UDim2.new(0, 50, 0, 22)
-    toggle.Position = UDim2.new(1, -55, 0.5, -11)
-    toggle.BackgroundColor3 = default and Color3.fromRGB(0, 200, 80) or Color3.fromRGB(150, 40, 40)
-    toggle.Text = default and "ON" or "OFF"
-    toggle.TextColor3 = Color3.fromRGB(255, 255, 255)
-    toggle.Font = Enum.Font.GothamBold
-    toggle.TextSize = 12
-    toggle.BorderSizePixel = 0
-    toggle.Parent = frame
-    
-    local state = default
-    toggle.MouseButton1Click:Connect(function()
-        state = not state
-        toggle.BackgroundColor3 = state and Color3.fromRGB(0, 200, 80) or Color3.fromRGB(150, 40, 40)
-        toggle.Text = state and "ON" or "OFF"
-        callback(state)
+    local active = false
+    btn.MouseButton1Click:Connect(function()
+        active = not active
+        btn.BackgroundColor3 = active and Color3.fromRGB(0, 180, 80) or (color or Color3.fromRGB(40, 50, 90))
+        btn.Text = text .. (active and " ✅" or "")
+        callback(active)
     end)
-    
-    return toggle
+    return btn
 end
 
 -- ========== CRIAR BOTÕES ==========
-createSection("⚔️ COMBATE")
-
-createToggle("🎯 Aimbot", false, function(s) 
+makeBtn("🎯 Aimbot", nil, function(s) 
     functions.Aimbot = s
     if not s then currentTarget = nil; targetLocked = false end
 end)
 
-createToggle("🔒 Aimlock", false, function(s) 
+makeBtn("🔒 Aimlock", nil, function(s) 
     functions.Aimlock = s
     if not s then currentTarget = nil; targetLocked = false end
 end)
 
-createToggle("👻 Silent Aim", false, function(s) functions.SilentAim = s end)
-createToggle("🔄 Auto Spin", false, function(s) functions.AutoSpin = s end)
+makeBtn("📦 ESP", nil, function(s) 
+    functions.ESP = s
+    updateESP()
+end)
 
-createSection("🎯 FOV CONFIG")
-
-createToggle("🔵 Mostrar FOV", true, function(s) 
+-- FOV
+local fovBtn = makeBtn("🎯 FOV: 500", Color3.fromRGB(80, 40, 100), function(s) 
     functions.ShowFOV = s
     fovCircle.Visible = s
 end)
 
--- Controle FOV
-local fovFrame = Instance.new("Frame")
-fovFrame.Size = UDim2.new(1, -5, 0, 40)
-fovFrame.BackgroundColor3 = Color3.fromRGB(35, 45, 80)
-fovFrame.BackgroundTransparency = 0.4
-fovFrame.BorderSizePixel = 1
-fovFrame.BorderColor3 = Color3.fromRGB(60, 100, 180)
-fovFrame.Parent = scroll
+-- ========== BOTÃO PARA MUDAR FOV ==========
+local fovChange = Instance.new("TextButton")
+fovChange.Size = UDim2.new(0.9, 0, 0, 35)
+fovChange.Position = UDim2.new(0.05, 0, 0, 0)
+fovChange.BackgroundColor3 = Color3.fromRGB(60, 40, 80)
+fovChange.BackgroundTransparency = 0.3
+fovChange.Text = "📏 Mudar FOV (500)"
+fovChange.TextColor3 = Color3.fromRGB(255, 255, 255)
+fovChange.TextSize = 14
+fovChange.Font = Enum.Font.Gotham
+fovChange.BorderSizePixel = 1
+fovChange.BorderColor3 = Color3.fromRGB(200, 120, 80)
+fovChange.Parent = scroll
 
-local fovLabel = Instance.new("TextLabel")
-fovLabel.Size = UDim2.new(0.4, 0, 1, 0)
-fovLabel.Position = UDim2.new(0, 10, 0, 0)
-fovLabel.BackgroundTransparency = 1
-fovLabel.Text = "📏 FOV: 500"
-fovLabel.TextColor3 = Color3.fromRGB(210, 220, 255)
-fovLabel.TextXAlignment = Enum.TextXAlignment.Left
-fovLabel.Font = Enum.Font.Gotham
-fovLabel.TextSize = 14
-fovLabel.Parent = fovFrame
+local fovs = {100, 200, 300, 400, 500, 600, 700, 800, 900, 1000}
+local fi = 5
 
-local fovMinus = Instance.new("TextButton")
-fovMinus.Size = UDim2.new(0, 35, 0, 28)
-fovMinus.Position = UDim2.new(1, -95, 0.5, -14)
-fovMinus.BackgroundColor3 = Color3.fromRGB(60, 100, 180)
-fovMinus.Text = "−"
-fovMinus.TextColor3 = Color3.fromRGB(255, 255, 255)
-fovMinus.TextSize = 20
-fovMinus.Font = Enum.Font.GothamBold
-fovMinus.BorderSizePixel = 0
-fovMinus.Parent = fovFrame
-
-local fovValue = Instance.new("TextLabel")
-fovValue.Size = UDim2.new(0, 50, 0, 28)
-fovValue.Position = UDim2.new(1, -52, 0.5, -14)
-fovValue.BackgroundTransparency = 1
-fovValue.Text = "500"
-fovValue.TextColor3 = Color3.fromRGB(255, 255, 255)
-fovValue.TextSize = 16
-fovValue.Font = Enum.Font.GothamBold
-fovValue.Parent = fovFrame
-
-local fovPlus = Instance.new("TextButton")
-fovPlus.Size = UDim2.new(0, 35, 0, 28)
-fovPlus.Position = UDim2.new(1, -135, 0.5, -14)
-fovPlus.BackgroundColor3 = Color3.fromRGB(60, 100, 180)
-fovPlus.Text = "+"
-fovPlus.TextColor3 = Color3.fromRGB(255, 255, 255)
-fovPlus.TextSize = 20
-fovPlus.Font = Enum.Font.GothamBold
-fovPlus.BorderSizePixel = 0
-fovPlus.Parent = fovFrame
-
-local function updateFOV(newFOV)
-    FOV = math.clamp(newFOV, 50, 1500)
-    fovLabel.Text = "📏 FOV: " .. FOV
-    fovValue.Text = tostring(FOV)
+fovChange.MouseButton1Click:Connect(function()
+    fi = fi % #fovs + 1
+    FOV = fovs[fi]
+    fovChange.Text = "📏 Mudar FOV (" .. FOV .. ")"
+    fovBtn.Text = "🎯 FOV: " .. FOV .. (functions.ShowFOV and " ✅" or "")
     fovCircle.Size = UDim2.new(0, FOV, 0, FOV)
     fovCircle.Position = UDim2.new(0.5, -FOV/2, 0.5, -FOV/2)
-    fovCircle.BorderSizePixel = math.max(1, math.floor(FOV / 100))
-end
-
-fovMinus.MouseButton1Click:Connect(function() updateFOV(FOV - 50) end)
-fovPlus.MouseButton1Click:Connect(function() updateFOV(FOV + 50) end)
-
--- Presets
-local presetFrame = Instance.new("Frame")
-presetFrame.Size = UDim2.new(1, -5, 0, 32)
-presetFrame.BackgroundColor3 = Color3.fromRGB(35, 45, 80)
-presetFrame.BackgroundTransparency = 0.4
-presetFrame.BorderSizePixel = 1
-presetFrame.BorderColor3 = Color3.fromRGB(60, 100, 180)
-presetFrame.Parent = scroll
-
-local presetLabel = Instance.new("TextLabel")
-presetLabel.Size = UDim2.new(0.25, 0, 1, 0)
-presetLabel.Position = UDim2.new(0, 10, 0, 0)
-presetLabel.BackgroundTransparency = 1
-presetLabel.Text = "⚡ Presets:"
-presetLabel.TextColor3 = Color3.fromRGB(210, 220, 255)
-presetLabel.TextXAlignment = Enum.TextXAlignment.Left
-presetLabel.Font = Enum.Font.Gotham
-presetLabel.TextSize = 12
-presetLabel.Parent = presetFrame
-
-local presets = {100, 300, 500, 800, 1000}
-for i, val in ipairs(presets) do
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0, 40, 0, 22)
-    btn.Position = UDim2.new(0.28 + (i-1) * 0.14, 0, 0.5, -11)
-    btn.BackgroundColor3 = Color3.fromRGB(60, 100, 180)
-    btn.Text = tostring(val)
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.TextSize = 11
-    btn.Font = Enum.Font.GothamBold
-    btn.BorderSizePixel = 0
-    btn.Parent = presetFrame
-    btn.MouseButton1Click:Connect(function() updateFOV(val) end)
-end
-
-createSection("👁️ ESP")
-
-createToggle("📦 ESP Box", false, function(s) 
-    functions.ESPBox = s
-    updateESP()
 end)
 
-createToggle("❤️ ESP Health", false, function(s) 
-    functions.ESPHealth = s
-    updateESP()
-end)
-
-createToggle("📝 ESP Name", false, function(s) 
-    functions.ESPName = s
-    updateESP()
-end)
-
-createSection("⚙️ OUTRAS")
-
-createToggle("🚫 No Recoil", false, function(s) functions.NoRecoil = s end)
-createToggle("🎯 No Spread", false, function(s) functions.NoSpread = s end)
-createToggle("🔫 Auto Shoot", false, function(s) functions.AutoShoot = s end)
-
--- ========== ABRIR/FECHAR HUB ==========
-local hubOpen = false
+-- ========== ABRIR/FECHAR (IGUAL AO TESTE) ==========
+local open = false
 
 icon.MouseButton1Click:Connect(function()
-    hubOpen = not hubOpen
-    hub.Visible = hubOpen
-    if hubOpen then
-        icon.Text = "✕"
-        icon.BackgroundColor3 = Color3.fromRGB(200, 30, 30)
-        hub.Size = UDim2.new(0, 0, 0, 500)
-        local tween = TweenService:Create(hub, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-            Size = UDim2.new(0, 380, 0, 500)
-        })
-        tween:Play()
-    else
-        icon.Text = "❄️"
-        icon.BackgroundColor3 = Color3.fromRGB(30, 80, 180)
-        hub.Size = UDim2.new(0, 0, 0, 500)
-    end
+    open = not open
+    hub.Visible = open
+    icon.Text = open and "✕" or "❄️"
+    icon.BackgroundColor3 = open and Color3.fromRGB(200, 30, 30) or Color3.fromRGB(30, 80, 180)
 end)
 
 close.MouseButton1Click:Connect(function()
-    hubOpen = false
+    open = false
     hub.Visible = false
     icon.Text = "❄️"
     icon.BackgroundColor3 = Color3.fromRGB(30, 80, 180)
 end)
 
 -- ========== AIMBOT ==========
-local function getBestTarget()
+local function getTarget()
     if not Mouse then return nil end
     local center = Vector2.new(Mouse.X, Mouse.Y)
     local best, bestScore = nil, math.huge
     
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character then
-            local head = player.Character:FindFirstChild("Head")
-            local humanoid = player.Character:FindFirstChild("Humanoid")
-            if head and humanoid and humanoid.Health > 0 then
-                local pos, onScreen = Camera:WorldToScreenPoint(head.Position)
-                if onScreen then
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and p.Character then
+            local head = p.Character:FindFirstChild("Head")
+            local hum = p.Character:FindFirstChild("Humanoid")
+            if head and hum and hum.Health > 0 then
+                local pos, on = Camera:WorldToScreenPoint(head.Position)
+                if on then
                     local dist = (Vector2.new(pos.X, pos.Y) - center).Magnitude
                     if dist < FOV and dist < bestScore then
                         bestScore = dist
-                        best = player
+                        best = p
                     end
                 end
             end
@@ -443,23 +242,12 @@ local function getBestTarget()
     return best
 end
 
-local function isTargetValid(target)
-    if not target then return false end
-    if not target.Character then return false end
-    local head = target.Character:FindFirstChild("Head")
-    local humanoid = target.Character:FindFirstChild("Humanoid")
-    if not head or not humanoid then return false end
-    if humanoid.Health <= 0 then return false end
-    return true
-end
-
 RunService.RenderStepped:Connect(function()
-    -- Aimbot / Aimlock
     if functions.Aimbot or functions.Aimlock then
-        if not targetLocked or not isTargetValid(currentTarget) then
-            local newTarget = getBestTarget()
-            if newTarget then
-                currentTarget = newTarget
+        if not targetLocked or not currentTarget or not currentTarget.Character then
+            local new = getTarget()
+            if new then
+                currentTarget = new
                 targetLocked = true
             else
                 return
@@ -468,131 +256,115 @@ RunService.RenderStepped:Connect(function()
         
         local head = currentTarget.Character:FindFirstChild("Head")
         if head then
-            local targetPos = head.Position
+            local pos = head.Position
             if functions.Aimbot then
-                Camera.CFrame = CFrame.lookAt(Camera.CFrame.Position, targetPos)
+                Camera.CFrame = CFrame.lookAt(Camera.CFrame.Position, pos)
             end
             if functions.Aimlock then
-                local dist = (targetPos - Camera.CFrame.Position).Magnitude
-                if dist < 350 then
-                    Camera.CFrame = CFrame.lookAt(Camera.CFrame.Position, targetPos)
+                if (pos - Camera.CFrame.Position).Magnitude < 300 then
+                    Camera.CFrame = CFrame.lookAt(Camera.CFrame.Position, pos)
                 else
                     targetLocked = false
-                    currentTarget = nil
                 end
             end
-        end
-    end
-    
-    -- Auto Spin
-    if functions.AutoSpin and LocalPlayer.Character then
-        local hrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            hrp.CFrame = hrp.CFrame * CFrame.Angles(0, 0.03, 0)
         end
     end
 end)
 
 -- ========== ESP ==========
-local espObjects = {}
+local espObjs = {}
 
 function updateESP()
-    -- Limpar ESP antigo
-    for player, list in pairs(espObjects) do
-        for _, obj in pairs(list) do
-            pcall(function() obj:Destroy() end)
-        end
-        espObjects[player] = nil
+    for p, list in pairs(espObjs) do
+        for _, obj in pairs(list) do pcall(obj.Destroy, obj) end
+        espObjs[p] = nil
     end
     
-    -- Se ESP estiver desligado, não criar
-    if not functions.ESPBox and not functions.ESPHealth and not functions.ESPName then
-        return
-    end
+    if not functions.ESP then return end
     
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer then
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer then
             pcall(function()
-                local char = player.Character
+                local char = p.Character
                 if not char then return end
                 local head = char:FindFirstChild("Head")
                 if not head then return end
                 
-                local espList = {}
+                local list = {}
                 
-                -- ESP Box
-                if functions.ESPBox then
-                    local box = Instance.new("BoxHandleAdornment")
-                    box.Size = Vector3.new(2.5, 4.5, 1)
-                    box.Adornee = char
-                    box.Color3 = Color3.fromRGB(0, 200, 255)
-                    box.Transparency = 0.3
-                    box.ZIndex = 10
-                    box.Parent = char
-                    table.insert(espList, box)
-                end
+                -- Box
+                local box = Instance.new("BoxHandleAdornment")
+                box.Size = Vector3.new(2.5, 4.5, 1)
+                box.Adornee = char
+                box.Color3 = Color3.fromRGB(0, 200, 255)
+                box.Transparency = 0.3
+                box.ZIndex = 10
+                box.Parent = char
+                table.insert(list, box)
                 
-                -- ESP Health
-                if functions.ESPHealth then
-                    local bgui = Instance.new("BillboardGui")
-                    bgui.Size = UDim2.new(0, 40, 0, 6)
-                    bgui.Adornee = head
-                    bgui.Parent = char
-                    
-                    local bg = Instance.new("Frame")
-                    bg.Size = UDim2.new(1, 0, 1, 0)
-                    bg.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-                    bg.BackgroundTransparency = 0.5
-                    bg.Parent = bgui
-                    
-                    local bar = Instance.new("Frame")
-                    bar.Size = UDim2.new(1, 0, 1, 0)
-                    bar.BackgroundColor3 = Color3.fromRGB(0, 200, 50)
-                    bar.Parent = bgui
-                    
-                    local humanoid = char:FindFirstChild("Humanoid")
-                    if humanoid then
-                        humanoid:GetPropertyChangedSignal("Health"):Connect(function()
-                            bar.Size = UDim2.new(humanoid.Health / humanoid.MaxHealth, 0, 1, 0)
-                            if humanoid.Health / humanoid.MaxHealth < 0.3 then
-                                bar.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
-                            elseif humanoid.Health / humanoid.MaxHealth < 0.6 then
-                                bar.BackgroundColor3 = Color3.fromRGB(200, 200, 0)
-                            else
-                                bar.BackgroundColor3 = Color3.fromRGB(0, 200, 50)
-                            end
-                        end)
-                    end
-                    
-                    table.insert(espList, bgui)
-                end
+                -- Nome
+                local bg = Instance.new("BillboardGui")
+                bg.Size = UDim2.new(0, 80, 0, 20)
+                bg.Adornee = head
+                bg.Parent = char
                 
-                -- ESP Name
-                if functions.ESPName then
-                    local bgui = Instance.new("BillboardGui")
-                    bgui.Size = UDim2.new(0, 80, 0, 20)
-                    bgui.Adornee = head
-                    bgui.Parent = char
-                    
-                    local label = Instance.new("TextLabel")
-                    label.Size = UDim2.new(1, 0, 1, 0)
-                    label.BackgroundTransparency = 1
-                    label.Text = player.Name
-                    label.TextColor3 = Color3.fromRGB(255, 255, 255)
-                    label.TextScaled = true
-                    label.Font = Enum.Font.GothamBold
-                    label.Parent = bgui
-                    
-                    table.insert(espList, bgui)
-                end
+                local lbl = Instance.new("TextLabel")
+                lbl.Size = UDim2.new(1, 0, 1, 0)
+                lbl.BackgroundTransparency = 1
+                lbl.Text = p.Name
+                lbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+                lbl.TextScaled = true
+                lbl.Font = Enum.Font.GothamBold
+                lbl.Parent = bg
+                table.insert(list, bg)
                 
-                espObjects[player] = espList
+                espObjs[p] = list
             end)
         end
     end
 end
 
 -- ========== EVENTOS ==========
-Players.PlayerAdded:Connect(function(player)
-    player.CharacterAdded:Connect(function()
-        task.wait(0.
+Players.PlayerAdded:Connect(function(p)
+    p.CharacterAdded:Connect(function()
+        task.wait(0.5)
+        updateESP()
+    end)
+end)
+
+Players.PlayerRemoving:Connect(function(p)
+    if espObjs[p] then
+        for _, obj in pairs(espObjs[p]) do
+            pcall(obj.Destroy, obj)
+        end
+        espObjs[p] = nil
+    end
+end)
+
+-- ========== INICIALIZAR ==========
+task.wait(1)
+updateESP()
+
+-- ========== MENSAGEM NA TELA ==========
+local msg = Instance.new("TextLabel")
+msg.Size = UDim2.new(0, 250, 0, 40)
+msg.Position = UDim2.new(0.5, -125, 0, 100)
+msg.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+msg.BackgroundTransparency = 0.2
+msg.Text = "❄️ SNOW HUB CARREGADO"
+msg.TextColor3 = Color3.fromRGB(255, 255, 255)
+msg.TextScaled = true
+msg.Font = Enum.Font.GothamBold
+msg.BorderSizePixel = 2
+msg.BorderColor3 = Color3.fromRGB(0, 255, 150)
+msg.Parent = gui
+
+task.wait(2)
+msg:Destroy()
+
+print("═══════════════════════════════════════")
+print("❄️ SNOW PVP HUB v15")
+print("═══════════════════════════════════════")
+print("✅ CARREGADO COM SUCESSO!")
+print("📌 Clique no ❄️ no canto superior")
+print("═══════════════════════════════════════")
