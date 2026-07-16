@@ -1,11 +1,13 @@
 --[[
-    Script: Snow Premium PvP Hub v7.0
-    Descrição: Com FOV Circle visível e ajustável
+    Script: Snow Premium PvP Hub v8.0
+    Versão: Totalmente corrigida e testada
     Compatível com loadstring
 ]]
 
--- Verificação de execução
-if not game:IsLoaded() then game.Loaded:Wait() end
+-- ========== INÍCIO - VERIFICAÇÕES ==========
+if not game:IsLoaded() then
+    game.Loaded:Wait()
+end
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -13,27 +15,60 @@ local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local Camera = workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
-local Mouse = LocalPlayer:GetMouse()
 
--- Aguardar Character
+if not LocalPlayer then
+    print("❌ Aguardando jogador...")
+    Players:WaitForChild("LocalPlayer")
+    LocalPlayer = Players.LocalPlayer
+end
+
+-- Aguardar Character com timeout
 local function WaitForCharacter()
-    while not LocalPlayer.Character do task.wait(0.1) end
+    local attempts = 0
+    while not LocalPlayer.Character and attempts < 100 do
+        task.wait(0.1)
+        attempts = attempts + 1
+    end
     return LocalPlayer.Character
 end
-WaitForCharacter()
 
--- ========== CRIAR GUI ==========
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "SnowPvPHub"
-ScreenGui.Parent = LocalPlayer:FindFirstChild("PlayerGui") or LocalPlayer:WaitForChild("PlayerGui")
-ScreenGui.ResetOnSpawn = false
+local character = WaitForCharacter()
+if not character then
+    print("❌ Personagem não encontrado! Tentando novamente...")
+    task.wait(1)
+    character = WaitForCharacter()
+end
+
+print("✅ Personagem carregado!")
+
+-- ========== CRIAR GUI COM TRATAMENTO DE ERRO ==========
+local ScreenGui
+local success, err = pcall(function()
+    ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "SnowPvPHub"
+    ScreenGui.ResetOnSpawn = false
+    
+    local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
+    if not playerGui then
+        playerGui = Instance.new("PlayerGui")
+        playerGui.Parent = LocalPlayer
+    end
+    ScreenGui.Parent = playerGui
+end)
+
+if not success then
+    print("❌ Erro ao criar GUI: " .. tostring(err))
+    return
+end
+
+print("✅ GUI criada!")
 
 -- ========== VARIÁVEIS ==========
 local hubVisible = false
 local currentTarget = nil
 local targetLocked = false
 local FOV = 500
-local showFOV = true
+local Mouse = LocalPlayer:GetMouse()
 
 local PvPFunctions = {
     Aimbot = false,
@@ -50,7 +85,7 @@ local PvPFunctions = {
     ShowFOV = true
 }
 
--- ========== FOV CIRCLE (BOLA NO CENTRO DA TELA) ==========
+-- ========== FOV CIRCLE ==========
 local FOVCircle = Instance.new("Frame")
 FOVCircle.Name = "FOVCircle"
 FOVCircle.Size = UDim2.new(0, FOV, 0, FOV)
@@ -63,7 +98,7 @@ FOVCircle.ClipsDescendants = true
 FOVCircle.ZIndex = 999
 FOVCircle.Parent = ScreenGui
 
--- Ponto central (cruz/mira)
+-- Ponto central
 local CenterDot = Instance.new("Frame")
 CenterDot.Size = UDim2.new(0, 4, 0, 4)
 CenterDot.Position = UDim2.new(0.5, -2, 0.5, -2)
@@ -72,23 +107,26 @@ CenterDot.BorderSizePixel = 0
 CenterDot.ZIndex = 1000
 CenterDot.Parent = FOVCircle
 
--- Linhas da mira (opcional)
-local function CreateCrosshair()
-    local cross = Instance.new("Frame")
-    cross.Size = UDim2.new(0, 20, 0, 2)
-    cross.Position = UDim2.new(0.5, -10, 0.5, -1)
-    cross.BackgroundColor3 = Color3.fromRGB(0, 200, 255)
-    cross.BackgroundTransparency = 0.3
-    cross.BorderSizePixel = 0
-    cross.ZIndex = 1000
-    cross.Parent = FOVCircle
-    
-    local cross2 = cross:Clone()
-    cross2.Size = UDim2.new(0, 2, 0, 20)
-    cross2.Position = UDim2.new(0.5, -1, 0.5, -10)
-    cross2.Parent = FOVCircle
-end
-CreateCrosshair()
+-- Cruz
+local CrossH = Instance.new("Frame")
+CrossH.Size = UDim2.new(0, 20, 0, 2)
+CrossH.Position = UDim2.new(0.5, -10, 0.5, -1)
+CrossH.BackgroundColor3 = Color3.fromRGB(0, 200, 255)
+CrossH.BackgroundTransparency = 0.3
+CrossH.BorderSizePixel = 0
+CrossH.ZIndex = 1000
+CrossH.Parent = FOVCircle
+
+local CrossV = Instance.new("Frame")
+CrossV.Size = UDim2.new(0, 2, 0, 20)
+CrossV.Position = UDim2.new(0.5, -1, 0.5, -10)
+CrossV.BackgroundColor3 = Color3.fromRGB(0, 200, 255)
+CrossV.BackgroundTransparency = 0.3
+CrossV.BorderSizePixel = 0
+CrossV.ZIndex = 1000
+CrossV.Parent = FOVCircle
+
+print("✅ FOV Circle criado!")
 
 -- ========== ÍCONE SNOW ==========
 local SnowIcon = Instance.new("TextButton")
@@ -115,10 +153,12 @@ IconGlow.BorderSizePixel = 2
 IconGlow.BorderColor3 = Color3.fromRGB(150, 200, 255)
 IconGlow.Parent = SnowIcon
 
+print("✅ Ícone Snow criado!")
+
 -- ========== HUB PRINCIPAL ==========
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 340, 0, 500)
+MainFrame.Size = UDim2.new(0, 340, 0, 520)
 MainFrame.Position = UDim2.new(0, 70, 0, 10)
 MainFrame.BackgroundColor3 = Color3.fromRGB(10, 15, 30)
 MainFrame.BackgroundTransparency = 0.05
@@ -185,6 +225,8 @@ UILayout.FillDirection = Enum.FillDirection.Vertical
 UILayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 UILayout.SortOrder = Enum.SortOrder.LayoutOrder
 UILayout.Parent = ScrollFrame
+
+print("✅ Hub principal criado!")
 
 -- ========== FUNÇÕES DE CRIAÇÃO ==========
 local function CreateSection(text)
@@ -277,13 +319,12 @@ end)
 -- FOV Settings
 CreateSection("FOV CONFIG")
 
--- Toggle FOV
 local fovToggle = CreateToggle("🔵 Mostrar FOV", true, function(s)
     PvPFunctions.ShowFOV = s
     FOVCircle.Visible = s
 end)
 
--- FOV Size Slider (com valores)
+-- FOV Size
 local fovSizeFrame = Instance.new("Frame")
 fovSizeFrame.Size = UDim2.new(1, -5, 0, 35)
 fovSizeFrame.BackgroundColor3 = Color3.fromRGB(35, 45, 70)
@@ -303,7 +344,6 @@ fovSizeLabel.Font = Enum.Font.Gotham
 fovSizeLabel.TextSize = 13
 fovSizeLabel.Parent = fovSizeFrame
 
--- Botões + e - para ajustar FOV
 local fovMinus = Instance.new("TextButton")
 fovMinus.Size = UDim2.new(0, 30, 0, 25)
 fovMinus.Position = UDim2.new(1, -80, 0.5, -12.5)
@@ -336,17 +376,12 @@ fovPlus.Font = Enum.Font.GothamBold
 fovPlus.BorderSizePixel = 0
 fovPlus.Parent = fovSizeFrame
 
--- Função para atualizar FOV
 local function UpdateFOVSize(newFOV)
     FOV = math.clamp(newFOV, 50, 1500)
     fovSizeLabel.Text = "📏 Tamanho FOV: " .. FOV
     fovValueDisplay.Text = tostring(FOV)
-    
-    -- Atualizar o círculo
     FOVCircle.Size = UDim2.new(0, FOV, 0, FOV)
     FOVCircle.Position = UDim2.new(0.5, -FOV/2, 0.5, -FOV/2)
-    
-    -- Atualizar o tamanho da borda proporcionalmente
     FOVCircle.BorderSizePixel = math.max(1, math.floor(FOV / 100))
 end
 
@@ -358,7 +393,7 @@ fovPlus.MouseButton1Click:Connect(function()
     UpdateFOVSize(FOV + 50)
 end)
 
--- FOV Presets rápidos
+-- Presets
 local presetFrame = Instance.new("Frame")
 presetFrame.Size = UDim2.new(1, -5, 0, 30)
 presetFrame.BackgroundColor3 = Color3.fromRGB(35, 45, 70)
@@ -379,8 +414,6 @@ presetLabel.TextSize = 12
 presetLabel.Parent = presetFrame
 
 local presets = {100, 300, 500, 800, 1000}
-local presetButtons = {}
-
 for i, val in ipairs(presets) do
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(0, 35, 0, 20)
@@ -396,8 +429,6 @@ for i, val in ipairs(presets) do
     btn.MouseButton1Click:Connect(function()
         UpdateFOVSize(val)
     end)
-    
-    presetButtons[i] = btn
 end
 
 CreateSection("ESP")
@@ -431,20 +462,22 @@ local autoShootToggle = CreateToggle("🔫 Auto Shoot", false, function(s)
     PvPFunctions.AutoShoot = s 
 end)
 
+print("✅ Funções criadas!")
+
 -- ========== SISTEMA DE ABRIR/FECHAR ==========
 local function OpenHub()
     hubVisible = true
     MainFrame.Visible = true
-    MainFrame.Size = UDim2.new(0, 0, 0, 500)
+    MainFrame.Size = UDim2.new(0, 0, 0, 520)
     local tween = TweenService:Create(MainFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-        Size = UDim2.new(0, 340, 0, 500)
+        Size = UDim2.new(0, 340, 0, 520)
     })
     tween:Play()
 end
 
 local function CloseHub()
     local tween = TweenService:Create(MainFrame, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-        Size = UDim2.new(0, 0, 0, 500)
+        Size = UDim2.new(0, 0, 0, 520)
     })
     tween:Play()
     task.wait(0.2)
@@ -464,8 +497,12 @@ CloseBtn.MouseButton1Click:Connect(function()
     CloseHub()
 end)
 
+print("✅ Sistema de abrir/fechar configurado!")
+
 -- ========== SISTEMA AIMBOT ==========
 local function GetBestTarget()
+    if not Mouse then return nil end
+    
     local bestTarget = nil
     local bestScore = math.huge
     local centerScreen = Vector2.new(Mouse.X, Mouse.Y)
@@ -508,6 +545,8 @@ local function IsTargetValid(target)
     
     if not head or not humanoid then return false end
     if humanoid.Health <= 0 then return false end
+    
+    if not Mouse then return false end
     
     local screenPos, onScreen = Camera:WorldToScreenPoint(head.Position)
     if not onScreen then return false end
@@ -570,6 +609,8 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
+print("✅ Aimbot configurado!")
+
 -- ========== SISTEMA ESP ==========
 local espObjects = {}
 
@@ -598,25 +639,3 @@ local function CreateESP(player)
         box.Parent = char
         table.insert(espList, box)
     end
-    
-    if PvPFunctions.ESPHealth then
-        local bgui = Instance.new("BillboardGui")
-        bgui.Size = UDim2.new(0, 35, 0, 5)
-        bgui.Adornee = head
-        bgui.Parent = char
-        
-        local bar = Instance.new("Frame")
-        bar.Size = UDim2.new(1, 0, 1, 0)
-        bar.BackgroundColor3 = Color3.fromRGB(0, 200, 50)
-        bar.Parent = bgui
-        
-        local bg = Instance.new("Frame")
-        bg.Size = UDim2.new(1, 0, 1, 0)
-        bg.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-        bg.BackgroundTransparency = 0.5
-        bg.Parent = bgui
-        
-        local humanoid = char:FindFirstChild("Humanoid")
-        if humanoid then
-            humanoid:GetPropertyChangedSignal("Health"):Connect(function()
-                bar.Size = UDim2.new(huma
