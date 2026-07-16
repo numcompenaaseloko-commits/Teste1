@@ -1,23 +1,58 @@
 --[[
-    Script: Snow Premium PvP Hub v5.0
-    Descrição: Aimbot corrigido - foca em UM alvo por vez
+    Script: Snow Premium PvP Hub v6.0
+    Versão: Compatível com loadstring
+    Instruções: loadstring(game:HttpGet("URL_DO_SCRIPT"))()
 ]]
 
--- Variáveis Globais
+-- Verificação de execução via loadstring
+if not game:IsLoaded() then
+    game.Loaded:Wait()
+end
+
+-- ========== SISTEMA DE PROTEÇÃO ==========
+local function ValidateExecution()
+    local success, err = pcall(function()
+        local _ = game:GetService("Players").LocalPlayer
+    end)
+    
+    if not success then
+        warn("❌ Erro ao executar script! Certifique-se de estar em um jogo.")
+        return false
+    end
+    return true
+end
+
+if not ValidateExecution() then
+    return
+end
+
+-- ========== VARIÁVEIS GLOBAIS ==========
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 local Camera = workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 local Mouse = LocalPlayer:GetMouse()
+
+-- Aguardar Character
+local function WaitForCharacter()
+    while not LocalPlayer.Character do
+        task.wait(0.1)
+    end
+    return LocalPlayer.Character
+end
+WaitForCharacter()
+
+-- ========== CRIAR GUI ==========
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "SnowPvPHub"
-ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+ScreenGui.Parent = LocalPlayer:FindFirstChild("PlayerGui") or LocalPlayer:WaitForChild("PlayerGui")
 ScreenGui.ResetOnSpawn = false
 
--- Variáveis de estado
+-- ========== VARIÁVEIS DO HUB ==========
 local hubVisible = false
-local currentTarget = nil -- ALVO ATUAL (apenas UM)
+local currentTarget = nil
 local targetLocked = false
 local FOV = 500
 
@@ -38,19 +73,20 @@ local PvPFunctions = {
 -- ========== ÍCONE SNOW ==========
 local SnowIcon = Instance.new("TextButton")
 SnowIcon.Name = "SnowIcon"
-SnowIcon.Size = UDim2.new(0, 45, 0, 45)
+SnowIcon.Size = UDim2.new(0, 50, 0, 50)
 SnowIcon.Position = UDim2.new(0, 10, 0, 10)
 SnowIcon.BackgroundColor3 = Color3.fromRGB(30, 50, 90)
 SnowIcon.BackgroundTransparency = 0.1
-SnowIcon.Text = "❄️ SNOW"
+SnowIcon.Text = "❄️\nSNOW"
 SnowIcon.TextColor3 = Color3.fromRGB(200, 220, 255)
-SnowIcon.TextSize = 12
+SnowIcon.TextSize = 11
 SnowIcon.TextWrapped = true
 SnowIcon.Font = Enum.Font.GothamBold
 SnowIcon.BorderSizePixel = 2
 SnowIcon.BorderColor3 = Color3.fromRGB(80, 160, 255)
 SnowIcon.Parent = ScreenGui
 
+-- Glow do ícone
 local IconGlow = Instance.new("Frame")
 IconGlow.Size = UDim2.new(1, 10, 1, 10)
 IconGlow.Position = UDim2.new(0, -5, 0, -5)
@@ -64,7 +100,7 @@ IconGlow.Parent = SnowIcon
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Size = UDim2.new(0, 340, 0, 450)
-MainFrame.Position = UDim2.new(0, 60, 0, 10)
+MainFrame.Position = UDim2.new(0, 70, 0, 10)
 MainFrame.BackgroundColor3 = Color3.fromRGB(10, 15, 30)
 MainFrame.BackgroundTransparency = 0.05
 MainFrame.BorderSizePixel = 2
@@ -73,6 +109,7 @@ MainFrame.ClipsDescendants = true
 MainFrame.Visible = false
 MainFrame.Parent = ScreenGui
 
+-- Gradiente
 local GradientBG = Instance.new("UIGradient")
 GradientBG.Color = ColorSequence.new({
     ColorSequenceKeypoint.new(0, Color3.fromRGB(10, 15, 30)),
@@ -100,14 +137,15 @@ Title.TextScaled = true
 Title.Font = Enum.Font.GothamBold
 Title.Parent = TitleFrame
 
+-- Botão Fechar
 local CloseBtn = Instance.new("TextButton")
-CloseBtn.Size = UDim2.new(0, 22, 0, 22)
-CloseBtn.Position = UDim2.new(1, -27, 0, 6)
+CloseBtn.Size = UDim2.new(0, 25, 0, 25)
+CloseBtn.Position = UDim2.new(1, -30, 0, 5)
 CloseBtn.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
 CloseBtn.BackgroundTransparency = 0.2
 CloseBtn.Text = "✕"
 CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-CloseBtn.TextSize = 14
+CloseBtn.TextSize = 16
 CloseBtn.Font = Enum.Font.GothamBold
 CloseBtn.BorderSizePixel = 1
 CloseBtn.BorderColor3 = Color3.fromRGB(255, 100, 100)
@@ -119,7 +157,7 @@ ScrollFrame.Size = UDim2.new(1, -10, 1, -45)
 ScrollFrame.Position = UDim2.new(0, 5, 0, 40)
 ScrollFrame.BackgroundTransparency = 1
 ScrollFrame.BorderSizePixel = 0
-ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 600)
+ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 700)
 ScrollFrame.ScrollBarThickness = 5
 ScrollFrame.ScrollBarImageColor3 = Color3.fromRGB(80, 160, 255)
 ScrollFrame.Parent = MainFrame
@@ -131,7 +169,25 @@ UILayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 UILayout.SortOrder = Enum.SortOrder.LayoutOrder
 UILayout.Parent = ScrollFrame
 
--- ========== FUNÇÃO PARA CRIAR TOGGLES ==========
+-- ========== FUNÇÕES DE CRIAÇÃO ==========
+local function CreateSection(text)
+    local section = Instance.new("Frame")
+    section.Size = UDim2.new(1, -5, 0, 28)
+    section.BackgroundColor3 = Color3.fromRGB(50, 70, 120)
+    section.BackgroundTransparency = 0.4
+    section.BorderSizePixel = 0
+    section.Parent = ScrollFrame
+    
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, 0, 1, 0)
+    label.BackgroundTransparency = 1
+    label.Text = "✦ " .. text .. " ✦"
+    label.TextColor3 = Color3.fromRGB(180, 210, 255)
+    label.TextScaled = true
+    label.Font = Enum.Font.GothamSemibold
+    label.Parent = section
+end
+
 local function CreateToggle(text, default, callback)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(1, -5, 0, 30)
@@ -174,24 +230,6 @@ local function CreateToggle(text, default, callback)
     return toggle
 end
 
-local function CreateSection(text)
-    local section = Instance.new("Frame")
-    section.Size = UDim2.new(1, -5, 0, 28)
-    section.BackgroundColor3 = Color3.fromRGB(50, 70, 120)
-    section.BackgroundTransparency = 0.4
-    section.BorderSizePixel = 0
-    section.Parent = ScrollFrame
-    
-    local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, 0, 1, 0)
-    label.BackgroundTransparency = 1
-    label.Text = "✦ " .. text .. " ✦"
-    label.TextColor3 = Color3.fromRGB(180, 210, 255)
-    label.TextScaled = true
-    label.Font = Enum.Font.GothamSemibold
-    label.Parent = section
-end
-
 -- ========== CRIAR FUNÇÕES ==========
 CreateSection("COMBATE")
 
@@ -211,8 +249,13 @@ local aimlockToggle = CreateToggle("🔒 Aimlock", false, function(s)
     end
 end)
 
-local silentToggle = CreateToggle("👻 Silent Aim", false, function(s) PvPFunctions.SilentAim = s end)
-local autoSpinToggle = CreateToggle("🔄 Auto Spin", false, function(s) PvPFunctions.AutoSpin = s end)
+local silentToggle = CreateToggle("👻 Silent Aim", false, function(s) 
+    PvPFunctions.SilentAim = s 
+end)
+
+local autoSpinToggle = CreateToggle("🔄 Auto Spin", false, function(s) 
+    PvPFunctions.AutoSpin = s 
+end)
 
 -- FOV Slider
 local fovFrame = Instance.new("Frame")
@@ -256,16 +299,34 @@ end)
 
 CreateSection("ESP")
 
-local espBoxToggle = CreateToggle("📦 ESP Box", false, function(s) PvPFunctions.ESPBox = s; UpdateESP() end)
-local espHealthToggle = CreateToggle("❤️ ESP Health", false, function(s) PvPFunctions.ESPHealth = s; UpdateESP() end)
-local espNameToggle = CreateToggle("📝 ESP Name", false, function(s) PvPFunctions.ESPName = s; UpdateESP() end)
-local espDistToggle = CreateToggle("📏 ESP Distance", false, function(s) PvPFunctions.ESPDistance = s; UpdateESP() end)
+local espBoxToggle = CreateToggle("📦 ESP Box", false, function(s) 
+    PvPFunctions.ESPBox = s 
+    UpdateESP() 
+end)
+
+local espHealthToggle = CreateToggle("❤️ ESP Health", false, function(s) 
+    PvPFunctions.ESPHealth = s 
+    UpdateESP() 
+end)
+
+local espNameToggle = CreateToggle("📝 ESP Name", false, function(s) 
+    PvPFunctions.ESPName = s 
+    UpdateESP() 
+end)
 
 CreateSection("OUTRAS")
 
-local noRecoilToggle = CreateToggle("🚫 No Recoil", false, function(s) PvPFunctions.NoRecoil = s end)
-local noSpreadToggle = CreateToggle("🎯 No Spread", false, function(s) PvPFunctions.NoSpread = s end)
-local autoShootToggle = CreateToggle("🔫 Auto Shoot", false, function(s) PvPFunctions.AutoShoot = s end)
+local noRecoilToggle = CreateToggle("🚫 No Recoil", false, function(s) 
+    PvPFunctions.NoRecoil = s 
+end)
+
+local noSpreadToggle = CreateToggle("🎯 No Spread", false, function(s) 
+    PvPFunctions.NoSpread = s 
+end)
+
+local autoShootToggle = CreateToggle("🔫 Auto Shoot", false, function(s) 
+    PvPFunctions.AutoShoot = s 
+end)
 
 -- ========== SISTEMA DE ABRIR/FECHAR ==========
 local function OpenHub()
@@ -300,8 +361,7 @@ CloseBtn.MouseButton1Click:Connect(function()
     CloseHub()
 end)
 
--- ========== SISTEMA AIMBOT CORRIGIDO ==========
--- Função para pegar APENAS O MELHOR ALVO (um único)
+-- ========== SISTEMA AIMBOT ==========
 local function GetBestTarget()
     local bestTarget = nil
     local bestScore = math.huge
@@ -313,23 +373,16 @@ local function GetBestTarget()
             local root = player.Character:FindFirstChild("HumanoidRootPart")
             
             if head and root then
-                -- Verifica se o player está vivo
                 local humanoid = player.Character:FindFirstChild("Humanoid")
                 if humanoid and humanoid.Health > 0 then
                     local headPos = head.Position
                     local screenPos, onScreen = Camera:WorldToScreenPoint(headPos)
                     
                     if onScreen then
-                        -- Distância do centro da tela
                         local distFromCenter = (Vector2.new(screenPos.X, screenPos.Y) - centerScreen).Magnitude
-                        
-                        -- Distância 3D do jogador
                         local dist3D = (headPos - Camera.CFrame.Position).Magnitude
-                        
-                        -- Score: prioriza alvos mais próximos do centro da tela E mais próximos
                         local score = distFromCenter + (dist3D / 10)
                         
-                        -- Só considera se estiver dentro do FOV
                         if distFromCenter < FOV and score < bestScore then
                             bestScore = score
                             bestTarget = player
@@ -343,7 +396,6 @@ local function GetBestTarget()
     return bestTarget
 end
 
--- Função para verificar se o alvo ainda é válido
 local function IsTargetValid(target)
     if not target then return false end
     if not target.Character then return false end
@@ -354,17 +406,16 @@ local function IsTargetValid(target)
     if not head or not humanoid then return false end
     if humanoid.Health <= 0 then return false end
     
-    -- Verifica se ainda está dentro do FOV
     local screenPos, onScreen = Camera:WorldToScreenPoint(head.Position)
     if not onScreen then return false end
     
     local distFromCenter = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(Mouse.X, Mouse.Y)).Magnitude
-    if distFromCenter > FOV * 1.5 then return false end -- Tolerância maior para não perder o alvo facilmente
+    if distFromCenter > FOV * 1.5 then return false end
     
     return true
 end
 
--- Sistema de mira principal
+-- Loop principal do aimbot
 RunService.RenderStepped:Connect(function()
     local aimbotEnabled = PvPFunctions.Aimbot
     local aimlockEnabled = PvPFunctions.Aimlock
@@ -375,7 +426,6 @@ RunService.RenderStepped:Connect(function()
         return
     end
     
-    -- Se não tem alvo ou o alvo atual é inválido, procura um novo
     if not targetLocked or not IsTargetValid(currentTarget) then
         local newTarget = GetBestTarget()
         if newTarget then
@@ -388,26 +438,20 @@ RunService.RenderStepped:Connect(function()
         end
     end
     
-    -- Se chegou aqui, tem um alvo válido
     if currentTarget and currentTarget.Character then
         local head = currentTarget.Character:FindFirstChild("Head")
-        local root = currentTarget.Character:FindFirstChild("HumanoidRootPart")
-        
         if head then
             local targetPosition = head.Position
             
-            -- Para aimbot: mira na cabeça do alvo
             if aimbotEnabled then
                 Camera.CFrame = CFrame.lookAt(Camera.CFrame.Position, targetPosition)
             end
             
-            -- Para aimlock: trava na cabeça do alvo
             if aimlockEnabled then
                 local dist3D = (targetPosition - Camera.CFrame.Position).Magnitude
                 if dist3D < 300 then
                     Camera.CFrame = CFrame.lookAt(Camera.CFrame.Position, targetPosition)
                 else
-                    -- Se o alvo estiver muito longe, solta
                     targetLocked = false
                     currentTarget = nil
                 end
@@ -429,7 +473,9 @@ local espObjects = {}
 
 local function CreateESP(player)
     if espObjects[player] then
-        for _, obj in pairs(espObjects[player]) do obj:Destroy() end
+        for _, obj in pairs(espObjects[player]) do 
+            pcall(function() obj:Destroy() end)
+        end
         espObjects[player] = nil
     end
     
@@ -440,6 +486,7 @@ local function CreateESP(player)
     local head = char:FindFirstChild("Head")
     if not head then return end
     
+    -- Box ESP
     if PvPFunctions.ESPBox then
         local box = Instance.new("BoxHandleAdornment")
         box.Size = Vector3.new(2.5, 4.5, 1)
@@ -451,6 +498,7 @@ local function CreateESP(player)
         table.insert(espList, box)
     end
     
+    -- Health ESP
     if PvPFunctions.ESPHealth then
         local bgui = Instance.new("BillboardGui")
         bgui.Size = UDim2.new(0, 35, 0, 5)
@@ -472,15 +520,13 @@ local function CreateESP(player)
         if humanoid then
             humanoid:GetPropertyChangedSignal("Health"):Connect(function()
                 bar.Size = UDim2.new(humanoid.Health / humanoid.MaxHealth, 0, 1, 0)
-                if humanoid.Health <= 0 then
-                    UpdateESP()
-                end
             end)
         end
         
         table.insert(espList, bgui)
     end
     
+    -- Name ESP
     if PvPFunctions.ESPName then
         local bgui = Instance.new("BillboardGui")
         bgui.Size = UDim2.new(0, 70, 0, 18)
@@ -502,36 +548,39 @@ local function CreateESP(player)
     espObjects[player] = espList
 end
 
-local function UpdateESP()
+function UpdateESP()
     for player, list in pairs(espObjects) do
         if list then
-            for _, obj in pairs(list) do obj:Destroy() end
+            for _, obj in pairs(list) do 
+                pcall(function() obj:Destroy() end)
+            end
             espObjects[player] = nil
         end
     end
     
     for _, player in pairs(Players:GetPlayers()) do
         if player ~= LocalPlayer then
-            CreateESP(player)
+            pcall(function() CreateESP(player) end)
         end
     end
 end
 
+-- Conectar eventos
 Players.PlayerAdded:Connect(function(player)
     player.CharacterAdded:Connect(function()
-        task.wait(0.3)
-        CreateESP(player)
+        task.wait(0.5)
+        pcall(function() CreateESP(player) end)
     end)
 end)
 
 for _, player in pairs(Players:GetPlayers()) do
     if player ~= LocalPlayer then
         player.CharacterAdded:Connect(function()
-            task.wait(0.3)
-            CreateESP(player)
+            task.wait(0.5)
+            pcall(function() CreateESP(player) end)
         end)
-        task.wait(0.3)
-        CreateESP(player)
+        task.wait(0.5)
+        pcall(function() CreateESP(player) end)
     end
 end
 
@@ -540,15 +589,26 @@ coroutine.wrap(function()
     while SnowIcon and SnowIcon.Parent do
         for i = 1, 30 do
             task.wait(0.05)
-            IconGlow.BackgroundTransparency = 0.8 + math.sin(i * 0.2) * 0.15
-            IconGlow.BorderColor3 = Color3.fromRGB(
-                150 + math.sin(i * 0.2) * 50,
-                200 + math.sin(i * 0.25) * 50,
-                255 + math.sin(i * 0.15) * 50
-            )
+            pcall(function()
+                IconGlow.BackgroundTransparency = 0.8 + math.sin(i * 0.2) * 0.15
+                IconGlow.BorderColor3 = Color3.fromRGB(
+                    150 + math.sin(i * 0.2) * 50,
+                    200 + math.sin(i * 0.25) * 50,
+                    255 + math.sin(i * 0.15) * 50
+                )
+            end)
         end
     end
 end)()
 
-print("❄️ Snow Premium PvP Hub v5.0 Carregado!")
-print("📌 Aimbot corrigido - foca em UM alvo por vez!")# Teste1
+-- ========== MENSAGEM FINAL ==========
+print("❄️ Snow Premium PvP Hub v6.0 Carregado!")
+print("📌 Clique no ícone SNOW no canto superior esquerdo!")
+print("✅ Compatível com loadstring!")
+
+-- ========== FUNÇÃO PARA LOADSTRING ==========
+return {
+    Version = "6.0",
+    Status = "Loaded",
+    Functions = PvPFunctions
+}
