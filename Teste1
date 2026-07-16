@@ -1,592 +1,368 @@
 --[[
-    Snow Hub - Complete Aimbot & ESP Script
-    Todas as funcionalidades implementadas
+    Snow Hub - Script UI Premium para Roblox
+    Estrutura modular com design moderno e escuro
+    Carregamento via loadstring do GitHub
 ]]
 
--- Prevenção de múltiplas execuções
-if getgenv().SnowHubLoaded then
-    print("❄ Snow Hub já está carregado!")
-    return
-end
-getgenv().SnowHubLoaded = true
+-- Módulo principal da interface
+local SnowHub = {}
 
--- Services
+-- Configurações
+local Config = {
+    Theme = {
+        Background = Color3.fromRGB(20, 20, 25),
+        Surface = Color3.fromRGB(30, 30, 38),
+        Accent = Color3.fromRGB(0, 120, 255),
+        Text = Color3.fromRGB(255, 255, 255),
+        TextDim = Color3.fromRGB(180, 180, 190),
+        Border = Color3.fromRGB(45, 45, 55)
+    },
+    FOV = {
+        Radius = 150,        -- Raio do círculo FOV (configurável)
+        Color = Color3.fromRGB(255, 0, 0),
+        Transparency = 0.3
+    },
+    Animation = {
+        Duration = 0.3
+    }
+}
+
+-- Serviços
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
-local HttpService = game:GetService("HttpService")
-local LocalPlayer = Players.LocalPlayer
-local Camera = workspace.CurrentCamera
 
--- Settings
-local Settings = {
-    Aimbot = {
-        Enabled = false,
-        FOV = 150,
-        ShowFOV = true,
-        FOVColor = Color3.fromRGB(255, 255, 255),
-        FOVThickness = 2,
-    },
-    ESP = {
-        Enabled = false,
-        Boxes = true,
-        Tracers = true,
-        Names = true,
-        Distance = true,
-        Color = Color3.fromRGB(0, 255, 0),
-    }
-}
+local player = Players.LocalPlayer
+local mouse = player:GetMouse()
 
--- Save/Load
-local function saveSettings()
-    local data = HttpService:JSONEncode(Settings)
-    pcall(function()
-        setclipboard(data)
-        if writefile then writefile("SnowHub_Settings.json", data) end
-    end)
-    print("❄ Configurações salvas!")
-end
+-- Estado do Aimbot
+local aimbotActive = false
+local fovCircle = nil
 
-local function loadSettings()
-    pcall(function()
-        if isfile and isfile("SnowHub_Settings.json") then
-            local data = readfile("SnowHub_Settings.json")
-            local loaded = HttpService:JSONDecode(data)
-            if loaded then
-                Settings = loaded
-                print("❄ Configurações carregadas!")
-            end
-        end
-    end)
-end
+-- ============================================
+-- MÓDULO: UI Elements (Criação de componentes)
+-- ============================================
+local UI = {}
 
--- GUI
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "SnowHubGUI"
-ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
-ScreenGui.ResetOnSpawn = false
-
-local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 350, 0, 450)
-MainFrame.Position = UDim2.new(0.5, -175, 0.5, -225)
-MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
-MainFrame.BackgroundTransparency = 0.1
-MainFrame.BorderSizePixel = 0
-MainFrame.ClipsDescendants = true
-MainFrame.Parent = ScreenGui
-
--- Glassmorphism
-local Glass = Instance.new("Frame")
-Glass.Size = UDim2.new(1, 0, 1, 0)
-Glass.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-Glass.BackgroundTransparency = 0.95
-Glass.BorderSizePixel = 0
-Glass.Parent = MainFrame
-
-local Corner = Instance.new("UICorner")
-Corner.CornerRadius = UDim.new(0, 12)
-Corner.Parent = MainFrame
-
-local Stroke = Instance.new("UIStroke")
-Stroke.Color = Color3.fromRGB(255, 255, 255)
-Stroke.Transparency = 0.8
-Stroke.Thickness = 1
-Stroke.Parent = MainFrame
-
--- Title Bar
-local TitleBar = Instance.new("Frame")
-TitleBar.Size = UDim2.new(1, 0, 0, 35)
-TitleBar.BackgroundTransparency = 1
-TitleBar.Parent = MainFrame
-
-local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, -40, 1, 0)
-Title.Position = UDim2.new(0, 10, 0, 0)
-Title.BackgroundTransparency = 1
-Title.Text = "❄ Snow Hub ❄"
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.TextSize = 18
-Title.Font = Enum.Font.GothamBold
-Title.TextXAlignment = Enum.TextXAlignment.Left
-Title.Parent = TitleBar
-
--- Minimize Button
-local MinimizeBtn = Instance.new("TextButton")
-MinimizeBtn.Size = UDim2.new(0, 25, 0, 25)
-MinimizeBtn.Position = UDim2.new(1, -30, 0, 5)
-MinimizeBtn.BackgroundTransparency = 1
-MinimizeBtn.Text = "−"
-MinimizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-MinimizeBtn.TextSize = 20
-MinimizeBtn.Font = Enum.Font.GothamBold
-MinimizeBtn.Parent = TitleBar
-
-local isMinimized = false
-MinimizeBtn.MouseButton1Click:Connect(function()
-    isMinimized = not isMinimized
-    local targetSize = isMinimized and UDim2.new(0, 350, 0, 40) or UDim2.new(0, 350, 0, 450)
-    TweenService:Create(MainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {Size = targetSize}):Play()
-end)
-
--- Draggable
-local dragging = false
-local dragStart, startPos
-
-TitleBar.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = true
-        dragStart = input.Position
-        startPos = MainFrame.Position
-    end
-end)
-
-UserInputService.InputChanged:Connect(function(input)
-    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-        local delta = input.Position - dragStart
-        MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-    end
-end)
-
-UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = false
-    end
-end)
-
--- Scroll Frame
-local ScrollFrame = Instance.new("ScrollingFrame")
-ScrollFrame.Size = UDim2.new(1, -10, 1, -45)
-ScrollFrame.Position = UDim2.new(0, 5, 0, 40)
-ScrollFrame.BackgroundTransparency = 1
-ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 600)
-ScrollFrame.ScrollBarThickness = 4
-ScrollFrame.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 200)
-ScrollFrame.Parent = MainFrame
-
-local Content = Instance.new("Frame")
-Content.Size = UDim2.new(1, 0, 0, 600)
-Content.BackgroundTransparency = 1
-Content.Parent = ScrollFrame
-
-local function createSection(title, yPos)
-    local section = Instance.new("Frame")
-    section.Size = UDim2.new(1, -10, 0, 80)
-    section.Position = UDim2.new(0, 5, 0, yPos)
-    section.BackgroundTransparency = 1
-    section.Parent = Content
+-- Cria um frame com estilo padrão
+function UI.CreateFrame(parent, size, position, properties)
+    local frame = Instance.new("Frame")
+    frame.Parent = parent
+    frame.Size = size
+    frame.Position = position
+    frame.BackgroundColor3 = Config.Theme.Surface
+    frame.BorderSizePixel = 0
     
+    -- Cantos arredondados
+    local corner = Instance.new("UICorner")
+    corner.Parent = frame
+    corner.CornerRadius = UDim.new(0, 8)
+    
+    -- Sombra sutil
+    local shadow = Instance.new("Shadow")
+    shadow.Parent = frame
+    
+    if properties then
+        for prop, value in pairs(properties) do
+            frame[prop] = value
+        end
+    end
+    
+    return frame
+end
+
+-- Cria um texto com estilo
+function UI.CreateText(parent, text, size, position, properties)
     local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, 0, 0, 25)
+    label.Parent = parent
+    label.Size = size
+    label.Position = position
+    label.Text = text
+    label.TextColor3 = Config.Theme.Text
+    label.TextScaled = false
+    label.Font = Enum.Font.GothamBold
+    label.TextSize = 18
     label.BackgroundTransparency = 1
-    label.Text = title
-    label.TextColor3 = Color3.fromRGB(200, 200, 255)
-    label.TextSize = 16
-    label.Font = Enum.Font.GothamMedium
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    label.Parent = section
+    label.TextXAlignment = Enum.TextXAlignment.Center
+    label.TextYAlignment = Enum.TextYAlignment.Center
     
-    return section
-end
-
--- AIMBOT SECTION
-local aimbotSection = createSection("🎯 Aimbot", 0)
-local aimbotY = 30
-
--- Aimbot Toggle
-local aimbotToggle = Instance.new("TextButton")
-aimbotToggle.Size = UDim2.new(0, 120, 0, 30)
-aimbotToggle.Position = UDim2.new(0, 0, 0, aimbotY)
-aimbotToggle.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
-aimbotToggle.Text = "🔴 Disabled"
-aimbotToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
-aimbotToggle.TextSize = 14
-aimbotToggle.Font = Enum.Font.GothamMedium
-aimbotToggle.Parent = aimbotSection
-
-local CornerToggle = Instance.new("UICorner")
-CornerToggle.CornerRadius = UDim.new(0, 6)
-CornerToggle.Parent = aimbotToggle
-
-aimbotToggle.MouseButton1Click:Connect(function()
-    Settings.Aimbot.Enabled = not Settings.Aimbot.Enabled
-    aimbotToggle.Text = Settings.Aimbot.Enabled and "🟢 Enabled" or "🔴 Disabled"
-    aimbotToggle.BackgroundColor3 = Settings.Aimbot.Enabled and Color3.fromRGB(0, 180, 0) or Color3.fromRGB(40, 40, 60)
-end)
-
--- FOV Slider
-local fovLabel = Instance.new("TextLabel")
-fovLabel.Size = UDim2.new(0, 80, 0, 25)
-fovLabel.Position = UDim2.new(0, 140, 0, aimbotY + 2)
-fovLabel.BackgroundTransparency = 1
-fovLabel.Text = "FOV: 150"
-fovLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
-fovLabel.TextSize = 13
-fovLabel.Font = Enum.Font.GothamMedium
-fovLabel.TextXAlignment = Enum.TextXAlignment.Left
-fovLabel.Parent = aimbotSection
-
-local fovSlider = Instance.new("Frame")
-fovSlider.Size = UDim2.new(0, 150, 0, 4)
-fovSlider.Position = UDim2.new(0, 140, 0, aimbotY + 30)
-fovSlider.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
-fovSlider.Parent = aimbotSection
-
-local fovFill = Instance.new("Frame")
-fovFill.Size = UDim2.new(0.75, 0, 1, 0)
-fovFill.BackgroundColor3 = Color3.fromRGB(100, 100, 255)
-fovFill.Parent = fovSlider
-
-local sliderBtn = Instance.new("TextButton")
-sliderBtn.Size = UDim2.new(0, 12, 0, 12)
-sliderBtn.Position = UDim2.new(0.75, -6, 0.5, -6)
-sliderBtn.BackgroundColor3 = Color3.fromRGB(200, 200, 255)
-sliderBtn.Text = ""
-sliderBtn.Parent = fovSlider
-
-local CornerBtn = Instance.new("UICorner")
-CornerBtn.CornerRadius = UDim.new(1, 0)
-CornerBtn.Parent = sliderBtn
-
-local function updateFOV(value)
-    local clamped = math.clamp(value, 0, 1)
-    fovFill.Size = UDim2.new(clamped, 0, 1, 0)
-    sliderBtn.Position = UDim2.new(clamped, -6, 0.5, -6)
-    Settings.Aimbot.FOV = 50 + clamped * 250
-    fovLabel.Text = "FOV: " .. math.floor(Settings.Aimbot.FOV)
-end
-
-local sliderDrag = false
-sliderBtn.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        sliderDrag = true
-    end
-end)
-
-UserInputService.InputChanged:Connect(function(input)
-    if sliderDrag and input.UserInputType == Enum.UserInputType.MouseMovement then
-        local absPos = fovSlider.AbsolutePosition
-        local width = fovSlider.AbsoluteSize.X
-        local relative = (input.Position.X - absPos.X) / width
-        updateFOV(relative)
-    end
-end)
-
-UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        sliderDrag = false
-    end
-end)
-
--- Show FOV
-local fovToggleY = aimbotY + 50
-local showFOVBtn = Instance.new("TextButton")
-showFOVBtn.Size = UDim2.new(0, 100, 0, 25)
-showFOVBtn.Position = UDim2.new(0, 0, 0, fovToggleY)
-showFOVBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
-showFOVBtn.Text = "👁 Show FOV"
-showFOVBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-showFOVBtn.TextSize = 12
-showFOVBtn.Font = Enum.Font.GothamMedium
-showFOVBtn.Parent = aimbotSection
-
-local CornerShow = Instance.new("UICorner")
-CornerShow.CornerRadius = UDim.new(0, 6)
-CornerShow.Parent = showFOVBtn
-
-showFOVBtn.MouseButton1Click:Connect(function()
-    Settings.Aimbot.ShowFOV = not Settings.Aimbot.ShowFOV
-    showFOVBtn.BackgroundColor3 = Settings.Aimbot.ShowFOV and Color3.fromRGB(0, 180, 0) or Color3.fromRGB(40, 40, 60)
-end)
-
--- FOV Color
-local colorLabel = Instance.new("TextLabel")
-colorLabel.Size = UDim2.new(0, 80, 0, 25)
-colorLabel.Position = UDim2.new(0, 115, 0, fovToggleY)
-colorLabel.BackgroundTransparency = 1
-colorLabel.Text = "Color:"
-colorLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
-colorLabel.TextSize = 12
-colorLabel.Font = Enum.Font.GothamMedium
-colorLabel.TextXAlignment = Enum.TextXAlignment.Left
-colorLabel.Parent = aimbotSection
-
-local colorPicker = Instance.new("TextButton")
-colorPicker.Size = UDim2.new(0, 30, 0, 25)
-colorPicker.Position = UDim2.new(0, 170, 0, fovToggleY)
-colorPicker.BackgroundColor3 = Settings.Aimbot.FOVColor
-colorPicker.Text = ""
-colorPicker.Parent = aimbotSection
-
-local CornerColor = Instance.new("UICorner")
-CornerColor.CornerRadius = UDim.new(0, 6)
-CornerColor.Parent = colorPicker
-
-local fovColors = {Color3.fromRGB(255,255,255), Color3.fromRGB(255,0,0), Color3.fromRGB(0,255,0), Color3.fromRGB(0,0,255)}
-local fovColorIndex = 1
-colorPicker.MouseButton1Click:Connect(function()
-    fovColorIndex = fovColorIndex % #fovColors + 1
-    Settings.Aimbot.FOVColor = fovColors[fovColorIndex]
-    colorPicker.BackgroundColor3 = Settings.Aimbot.FOVColor
-end)
-
--- FOV Thickness
-local thickLabel = Instance.new("TextLabel")
-thickLabel.Size = UDim2.new(0, 80, 0, 25)
-thickLabel.Position = UDim2.new(0, 210, 0, fovToggleY)
-thickLabel.BackgroundTransparency = 1
-thickLabel.Text = "Thick: 2"
-thickLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
-thickLabel.TextSize = 12
-thickLabel.Font = Enum.Font.GothamMedium
-thickLabel.TextXAlignment = Enum.TextXAlignment.Left
-thickLabel.Parent = aimbotSection
-
-local thickSlider = Instance.new("Frame")
-thickSlider.Size = UDim2.new(0, 60, 0, 4)
-thickSlider.Position = UDim2.new(0, 270, 0, fovToggleY + 10)
-thickSlider.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
-thickSlider.Parent = aimbotSection
-
-local thickFill = Instance.new("Frame")
-thickFill.Size = UDim2.new(0.5, 0, 1, 0)
-thickFill.BackgroundColor3 = Color3.fromRGB(100, 100, 255)
-thickFill.Parent = thickSlider
-
-local thickBtn = Instance.new("TextButton")
-thickBtn.Size = UDim2.new(0, 10, 0, 10)
-thickBtn.Position = UDim2.new(0.5, -5, 0.5, -5)
-thickBtn.BackgroundColor3 = Color3.fromRGB(200, 200, 255)
-thickBtn.Text = ""
-thickBtn.Parent = thickSlider
-
-local CornerThick = Instance.new("UICorner")
-CornerThick.CornerRadius = UDim.new(1, 0)
-CornerThick.Parent = thickBtn
-
-local function updateThickness(value)
-    local clamped = math.clamp(value, 0, 1)
-    thickFill.Size = UDim2.new(clamped, 0, 1, 0)
-    thickBtn.Position = UDim2.new(clamped, -5, 0.5, -5)
-    Settings.Aimbot.FOVThickness = 1 + clamped * 5
-    thickLabel.Text = "Thick: " .. math.floor(Settings.Aimbot.FOVThickness)
-end
-
-local thickDrag = false
-thickBtn.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        thickDrag = true
-    end
-end)
-
-UserInputService.InputChanged:Connect(function(input)
-    if thickDrag and input.UserInputType == Enum.UserInputType.MouseMovement then
-        local absPos = thickSlider.AbsolutePosition
-        local width = thickSlider.AbsoluteSize.X
-        local relative = (input.Position.X - absPos.X) / width
-        updateThickness(relative)
-    end
-end)
-
-UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        thickDrag = false
-    end
-end)
-
--- ESP SECTION
-local espSection = createSection("👁 ESP", 100)
-local espY = 30
-
--- ESP Toggle
-local espToggle = Instance.new("TextButton")
-espToggle.Size = UDim2.new(0, 120, 0, 30)
-espToggle.Position = UDim2.new(0, 0, 0, espY)
-espToggle.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
-espToggle.Text = "🔴 Disabled"
-espToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
-espToggle.TextSize = 14
-espToggle.Font = Enum.Font.GothamMedium
-espToggle.Parent = espSection
-
-local CornerEsp = Instance.new("UICorner")
-CornerEsp.CornerRadius = UDim.new(0, 6)
-CornerEsp.Parent = espToggle
-
-espToggle.MouseButton1Click:Connect(function()
-    Settings.ESP.Enabled = not Settings.ESP.Enabled
-    espToggle.Text = Settings.ESP.Enabled and "🟢 Enabled" or "🔴 Disabled"
-    espToggle.BackgroundColor3 = Settings.ESP.Enabled and Color3.fromRGB(0, 180, 0) or Color3.fromRGB(40, 40, 60)
-end)
-
--- ESP Options
-local espOptions = {"Boxes", "Tracers", "Names", "Distance"}
-local espYOffset = espY + 40
-
-for i, option in ipairs(espOptions) do
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0, 70, 0, 25)
-    btn.Position = UDim2.new((i-1) * 0.23 + 0.02, 0, 0, espYOffset)
-    btn.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
-    btn.Text = option
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.TextSize = 11
-    btn.Font = Enum.Font.GothamMedium
-    btn.Parent = espSection
-    
-    local CornerOpt = Instance.new("UICorner")
-    CornerOpt.CornerRadius = UDim.new(0, 6)
-    CornerOpt.Parent = btn
-    
-    btn.MouseButton1Click:Connect(function()
-        Settings.ESP[option] = not Settings.ESP[option]
-        btn.BackgroundColor3 = Settings.ESP[option] and Color3.fromRGB(0, 180, 0) or Color3.fromRGB(40, 40, 60)
-    end)
-end
-
--- ESP Color
-local espColorY = espYOffset + 35
-local espColorLabel = Instance.new("TextLabel")
-espColorLabel.Size = UDim2.new(0, 60, 0, 25)
-espColorLabel.Position = UDim2.new(0, 5, 0, espColorY)
-espColorLabel.BackgroundTransparency = 1
-espColorLabel.Text = "ESP Color:"
-espColorLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
-espColorLabel.TextSize = 12
-espColorLabel.Font = Enum.Font.GothamMedium
-espColorLabel.TextXAlignment = Enum.TextXAlignment.Left
-espColorLabel.Parent = espSection
-
-local espColorBtn = Instance.new("TextButton")
-espColorBtn.Size = UDim2.new(0, 30, 0, 25)
-espColorBtn.Position = UDim2.new(0, 85, 0, espColorY)
-espColorBtn.BackgroundColor3 = Settings.ESP.Color
-espColorBtn.Text = ""
-espColorBtn.Parent = espSection
-
-local CornerEspColor = Instance.new("UICorner")
-CornerEspColor.CornerRadius = UDim.new(0, 6)
-CornerEspColor.Parent = espColorBtn
-
-local espColors = {Color3.fromRGB(0,255,0), Color3.fromRGB(255,0,0), Color3.fromRGB(0,0,255), Color3.fromRGB(255,255,0), Color3.fromRGB(255,0,255)}
-local espColorIndex = 1
-espColorBtn.MouseButton1Click:Connect(function()
-    espColorIndex = espColorIndex % #espColors + 1
-    Settings.ESP.Color = espColors[espColorIndex]
-    espColorBtn.BackgroundColor3 = Settings.ESP.Color
-end)
-
--- Save Button
-local saveBtn = Instance.new("TextButton")
-saveBtn.Size = UDim2.new(0, 150, 0, 30)
-saveBtn.Position = UDim2.new(0, 5, 0, 520)
-saveBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
-saveBtn.Text = "💾 Save Settings"
-saveBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-saveBtn.TextSize = 14
-saveBtn.Font = Enum.Font.GothamMedium
-saveBtn.Parent = Content
-
-local CornerSave = Instance.new("UICorner")
-CornerSave.CornerRadius = UDim.new(0, 6)
-CornerSave.Parent = saveBtn
-
-saveBtn.MouseButton1Click:Connect(saveSettings)
-
--- Load Button
-local loadBtn = Instance.new("TextButton")
-loadBtn.Size = UDim2.new(0, 150, 0, 30)
-loadBtn.Position = UDim2.new(0, 165, 0, 520)
-loadBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
-loadBtn.Text = "📂 Load Settings"
-loadBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-loadBtn.TextSize = 14
-loadBtn.Font = Enum.Font.GothamMedium
-loadBtn.Parent = Content
-
-local CornerLoad = Instance.new("UICorner")
-CornerLoad.CornerRadius = UDim.new(0, 6)
-CornerLoad.Parent = loadBtn
-
-loadBtn.MouseButton1Click:Connect(loadSettings)
-
--- FOV Circle Drawing
-local fovCircle = Instance.new("Frame")
-fovCircle.Size = UDim2.new(0, 2, 0, 2)
-fovCircle.Position = UDim2.new(0.5, -1, 0.5, -1)
-fovCircle.BackgroundTransparency = 1
-fovCircle.Parent = ScreenGui
-
-local function updateFOVCircle()
-    if not Settings.Aimbot.ShowFOV or not Settings.Aimbot.Enabled then
-        fovCircle.Visible = false
-        return
-    end
-    
-    fovCircle.Visible = true
-    local size = Settings.Aimbot.FOV / Camera.FieldOfView * 500
-    fovCircle.Size = UDim2.new(0, size, 0, size)
-    fovCircle.Position = UDim2.new(0.5, -size/2, 0.5, -size/2)
-    
-    for _, child in pairs(fovCircle:GetChildren()) do
-        if child:IsA("Frame") then
-            child:Destroy()
+    if properties then
+        for prop, value in pairs(properties) do
+            label[prop] = value
         end
     end
     
-    local segments = 36
-    local radius = size / 2
-    local center = size / 2
+    return label
+end
+
+-- Cria um botão estilizado
+function UI.CreateButton(parent, text, size, position, callback, properties)
+    local button = UI.CreateFrame(parent, size, position, {
+        BackgroundColor3 = Config.Theme.Accent
+    })
     
-    for i = 0, segments do
-        local angle = (i / segments) * math.pi * 2
-        local x = center + radius * math.cos(angle)
-        local y = center + radius * math.sin(angle)
-        
-        local point = Instance.new("Frame")
-        point.Size = UDim2.new(0, Settings.Aimbot.FOVThickness, 0, Settings.Aimbot.FOVThickness)
-        point.Position = UDim2.new(0, x - Settings.Aimbot.FOVThickness/2, 0, y - Settings.Aimbot.FOVThickness/2)
-        point.BackgroundColor3 = Settings.Aimbot.FOVColor
-        point.BackgroundTransparency = 0.3
-        point.BorderSizePixel = 0
-        point.Parent = fovCircle
+    -- Corner mais arredondado para botões
+    local corner = button:FindFirstChild("UICorner")
+    if corner then
+        corner.CornerRadius = UDim.new(0, 12)
+    end
+    
+    local label = UI.CreateText(button, text, UDim2.new(1, 0, 1, 0), UDim2.new(0, 0, 0, 0), {
+        TextSize = 16,
+        TextColor3 = Color3.fromRGB(255, 255, 255)
+    })
+    
+    -- Efeito hover
+    button.MouseEnter:Connect(function()
+        TweenService:Create(button, TweenInfo.new(0.15), {
+            BackgroundColor3 = Color3.fromRGB(30, 150, 255)
+        }):Play()
+    end)
+    
+    button.MouseLeave:Connect(function()
+        TweenService:Create(button, TweenInfo.new(0.15), {
+            BackgroundColor3 = Config.Theme.Accent
+        }):Play()
+    end)
+    
+    button.MouseButton1Click:Connect(callback)
+    
+    return button
+end
+
+-- ============================================
+-- MÓDULO: Aimbot (Lógica do Aimbot)
+-- ============================================
+local Aimbot = {}
+
+-- Cria o círculo FOV
+function Aimbot.CreateFOVCircle()
+    if fovCircle then
+        fovCircle:Destroy()
+        fovCircle = nil
+    end
+    
+    local circle = Instance.new("Frame")
+    circle.Parent = player.PlayerGui
+    circle.Size = UDim2.new(0, Config.FOV.Radius * 2, 0, Config.FOV.Radius * 2)
+    circle.Position = UDim2.new(0.5, -Config.FOV.Radius, 0.5, -Config.FOV.Radius)
+    circle.BackgroundColor3 = Config.FOV.Color
+    circle.BackgroundTransparency = 0.8
+    circle.BorderSizePixel = 0
+    circle.ZIndex = 999
+    
+    -- Borda do círculo
+    local border = Instance.new("Frame")
+    border.Parent = circle
+    border.Size = UDim2.new(1, -4, 1, -4)
+    border.Position = UDim2.new(0, 2, 0, 2)
+    border.BackgroundTransparency = 1
+    border.BorderSizePixel = 3
+    border.BorderColor3 = Config.FOV.Color
+    border.ZIndex = 1000
+    
+    -- Cantos arredondados para o círculo
+    local corner = Instance.new("UICorner")
+    corner.Parent = circle
+    corner.CornerRadius = UDim.new(1, 0)
+    
+    -- Efeito de brilho sutil
+    local glow = Instance.new("Frame")
+    glow.Parent = circle
+    glow.Size = UDim2.new(1, 10, 1, 10)
+    glow.Position = UDim2.new(0, -5, 0, -5)
+    glow.BackgroundColor3 = Config.FOV.Color
+    glow.BackgroundTransparency = 0.9
+    glow.BorderSizePixel = 0
+    glow.ZIndex = 998
+    
+    local glowCorner = Instance.new("UICorner")
+    glowCorner.Parent = glow
+    glowCorner.CornerRadius = UDim.new(1, 0)
+    
+    fovCircle = circle
+end
+
+-- Remove o círculo FOV
+function Aimbot.RemoveFOVCircle()
+    if fovCircle then
+        fovCircle:Destroy()
+        fovCircle = nil
     end
 end
 
--- ESP Drawing
-local espObjects = {}
-
-local function updateESP()
-    for _, obj in pairs(espObjects) do
-        obj:Destroy()
+-- Alterna o estado do Aimbot
+function Aimbot.Toggle()
+    aimbotActive = not aimbotActive
+    
+    if aimbotActive then
+        Aimbot.CreateFOVCircle()
+    else
+        Aimbot.RemoveFOVCircle()
     end
-    espObjects = {}
     
-    if not Settings.ESP.Enabled then return end
+    return aimbotActive
+end
+
+-- ============================================
+-- MÓDULO: Interface Principal (Snow Hub)
+-- ============================================
+local function CreateMainUI()
+    -- Container principal
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Parent = player.PlayerGui
+    screenGui.Name = "SnowHub"
+    screenGui.ResetOnSpawn = false
     
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-            local character = player.Character
-            local root = character.HumanoidRootPart
-            local position, onScreen = Camera:WorldToViewportPoint(root.Position)
+    -- Frame principal
+    local mainFrame = UI.CreateFrame(screenGui, UDim2.new(0, 380, 0, 240), UDim2.new(0.5, -190, 0.5, -120), {
+        BackgroundColor3 = Config.Theme.Background,
+        ClipsDescendants = true
+    })
+    
+    -- Sombra externa
+    local outerShadow = Instance.new("Frame")
+    outerShadow.Parent = mainFrame
+    outerShadow.Size = UDim2.new(1, 20, 1, 20)
+    outerShadow.Position = UDim2.new(0, -10, 0, -10)
+    outerShadow.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    outerShadow.BackgroundTransparency = 0.5
+    outerShadow.BorderSizePixel = 0
+    outerShadow.ZIndex = -1
+    
+    local outerCorner = Instance.new("UICorner")
+    outerCorner.Parent = outerShadow
+    outerCorner.CornerRadius = UDim.new(0, 12)
+    
+    -- Barra superior (título + botões)
+    local topBar = UI.CreateFrame(mainFrame, UDim2.new(1, 0, 0, 50), UDim2.new(0, 0, 0, 0), {
+        BackgroundColor3 = Color3.fromRGB(25, 25, 32)
+    })
+    
+    -- Título
+    local title = UI.CreateText(topBar, "Snow Hub", UDim2.new(0, 200, 1, 0), UDim2.new(0, 15, 0, 0), {
+        TextSize = 22,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        TextColor3 = Color3.fromRGB(255, 255, 255)
+    })
+    
+    -- Ícone decorativo
+    local icon = UI.CreateText(topBar, "❄", UDim2.new(0, 30, 1, 0), UDim2.new(0, -35, 0, 0), {
+        TextSize = 20,
+        TextColor3 = Config.Theme.Accent
+    })
+    
+    -- Botão Minimizar
+    local minButton = UI.CreateButton(topBar, "−", UDim2.new(0, 36, 0, 30), UDim2.new(1, -90, 0.5, -15), function()
+        mainFrame.Size = UDim2.new(0, 380, 0, 50)
+        TweenService:Create(mainFrame, TweenInfo.new(0.3), {
+            Size = UDim2.new(0, 380, 0, 50)
+        }):Play()
+    end, {
+        BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+    })
+    
+    -- Botão Fechar
+    local closeButton = UI.CreateButton(topBar, "✕", UDim2.new(0, 36, 0, 30), UDim2.new(1, -45, 0.5, -15), function()
+        screenGui:Destroy()
+    end, {
+        BackgroundColor3 = Color3.fromRGB(180, 40, 40)
+    })
+    
+    -- Conteúdo principal
+    local content = UI.CreateFrame(mainFrame, UDim2.new(1, -40, 1, -80), UDim2.new(0, 20, 0, 70), {
+        BackgroundTransparency = 1
+    })
+    
+    -- Botão Aimbot
+    local aimbotButton = UI.CreateButton(content, "Aimbot: OFF", UDim2.new(0, 200, 0, 45), UDim2.new(0.5, -100, 0.5, -22.5), function()
+        local state = Aimbot.Toggle()
+        aimbotButton:FindFirstChild("TextLabel").Text = "Aimbot: " .. (state and "ON" or "OFF")
+        
+        -- Mudar cor conforme estado
+        TweenService:Create(aimbotButton, TweenInfo.new(0.2), {
+            BackgroundColor3 = state and Color3.fromRGB(200, 30, 30) or Config.Theme.Accent
+        }):Play()
+    end, {
+        BackgroundColor3 = Config.Theme.Accent
+    })
+    
+    -- Status do FOV
+    local fovStatus = UI.CreateText(content, "FOV: " .. Config.FOV.Radius, UDim2.new(0, 120, 0, 20), UDim2.new(0.5, -60, 1, -25), {
+        TextSize = 13,
+        TextColor3 = Config.Theme.TextDim
+    })
+    
+    -- Informações adicionais
+    local infoText = UI.CreateText(content, "❄ Snow Hub v1.0", UDim2.new(0, 150, 0, 20), UDim2.new(0, 5, 1, -25), {
+        TextSize = 12,
+        TextColor3 = Config.Theme.TextDim,
+        TextXAlignment = Enum.TextXAlignment.Left
+    })
+    
+    -- ============================================
+    -- DRAGGABLE: Interface arrastável
+    -- ============================================
+    local dragging = false
+    local dragInput = nil
+    local dragStart = nil
+    local startPos = nil
+    
+    topBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = mainFrame.Position
             
-            if onScreen then
-                -- Box ESP
-                if Settings.ESP.Boxes then
-                    local box = Instance.new("Frame")
-                    box.Size = UDim2.new(0, 40, 0, 80)
-                    box.Position = UDim2.new(0, position.X - 20, 0, position.Y - 40)
-                    box.BackgroundTransparency = 0.5
-                    box.BackgroundColor3 = Settings.ESP.Color
-                    box.BorderSizePixel = 1
-                    box.BorderColor3 = Settings.ESP.Color
-                    box.Parent = ScreenGui
-                    table.insert(espObjects, box)
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
                 end
-                
-                -- Tracers
-                if Settings.ESP.Tracers then
-                    local tracer = Instance.new("Frame")
-                    local startPos = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
-                    local endPos = Vector2.new(position.X, position.Y)
-                    local dist = (endP
+            end)
+        end
+    end)
+    
+    topBar.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement then
+            dragInput = input
+        end
+    end)
+    
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - dragStart
+            mainFrame.Position = UDim2.new(
+                startPos.X.Scale,
+                startPos.X.Offset + delta.X,
+                startPos.Y.Scale,
+                startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+    
+    -- Animação de entrada
+    mainFrame.BackgroundTransparency = 1
+    TweenService:Create(mainFrame, TweenInfo.new(0.4), {
+        BackgroundTransparency = 0
+    }):Play()
+    
+    return screenGui
+end
+
+-- ============================================
+-- INICIALIZAÇÃO
+-- ============================================
+function SnowHub.Init()
+    -- Garantir que não há múltiplas instâncias
+    if player.PlayerGui:FindFirstChild("SnowHub") then
+        player.PlayerGui.SnowHub:Destroy()
+    end
+    
+    CreateMainUI()
+end
+
+-- ============================================
+-- EXPORTAÇÃO PARA LOADSTRING
+-- ============================================
+return SnowHub
